@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+/* Dark purple is the default palette. <html data-theme="dark|light|system"> switches it. */
+:root {
+  --background: #16131d;
+  --surface: #1f1b29;
+  --surface-muted: #292434;
+  --foreground: #dfdae8;
+  --foreground-muted: #a69fb6;
+  --border: #3a3449;
+  --accent: #b4a2ec;
+  --accent-foreground: #1b1430;
+  --accent-soft: #2c2443;
+  --warning-bg: #332b17;
+  --warning-fg: #e3cd96;
+  --warning-border: #6f5b2c;
+  --danger-bg: #3a2224;
+  --danger-fg: #e8a3a3;
+  --danger-border: #6e3a3d;
+  --success-bg: #20332d;
+  --success-fg: #9fd0bd;
+  --success-border: #3c5e52;
+  --homey: #9fd4f5;
+  --homey-deep: #5fa8d8;
+  --focus: #c9b8ff;
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 6px 16px rgba(0, 0, 0, 0.35);
+  --glass-tint-mix: 0%;
+  --frosted-bg: rgba(31, 27, 41, 0.72);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --touch-target: 2.75rem;
+  --tabbar-height: 4rem;
+  --topbar-height: 3.5rem;
+  --sidebar-width: 16rem;
+  --font-system: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Light option (the original warm palette with a purple accent). */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #f6f5f1;
+  --surface: #ffffff;
+  --surface-muted: #eeece6;
+  --foreground: #1b1d1f;
+  --foreground-muted: #4b5258;
+  --border: #d5d2c8;
+  --accent: #5b3fb5;
+  --accent-foreground: #ffffff;
+  --accent-soft: #e8e2f8;
+  --warning-bg: #fff2cc;
+  --warning-fg: #5c4300;
+  --warning-border: #e0b84a;
+  --danger-bg: #fde4e4;
+  --danger-fg: #7a1f1f;
+  --danger-border: #e09a9a;
+  --success-bg: #dcefe8;
+  --success-fg: #14503f;
+  --success-border: #8cc5b2;
+  --homey: #2b7fb8;
+  --homey-deep: #1d5f8e;
+  --focus: #1d4ed8;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 8px rgba(40, 30, 70, 0.12);
+  --glass-tint-mix: 45%;
+  --frosted-bg: rgba(255, 255, 255, 0.75);
+}
+
+/* "Match phone": dark by default, light when the device prefers light. */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --background: #f6f5f1;
+    --surface: #ffffff;
+    --surface-muted: #eeece6;
+    --foreground: #1b1d1f;
+    --foreground-muted: #4b5258;
+    --border: #d5d2c8;
+    --accent: #5b3fb5;
+    --accent-foreground: #ffffff;
+    --accent-soft: #e8e2f8;
+    --warning-bg: #fff2cc;
+    --warning-fg: #5c4300;
+    --warning-border: #e0b84a;
+    --danger-bg: #fde4e4;
+    --danger-fg: #7a1f1f;
+    --danger-border: #e09a9a;
+    --success-bg: #dcefe8;
+    --success-fg: #14503f;
+    --success-border: #8cc5b2;
+    --homey: #2b7fb8;
+    --homey-deep: #1d5f8e;
+    --focus: #1d4ed8;
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 8px rgba(40, 30, 70, 0.12);
+    --glass-tint-mix: 45%;
+    --frosted-bg: rgba(255, 255, 255, 0.75);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-border: var(--warning-border);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-border: var(--danger-border);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-success-border: var(--success-border);
+  --color-homey: var(--homey);
+  --color-homey-deep: var(--homey-deep);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --font-sans: var(--font-system);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-system);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* iOS Safari zooms into any field under 16px when it is tapped. */
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
+}
+
+/* Frosted glass icon tile; GlassIcon sets width, height and --tint (an "r g b" triplet). */
+.glass-icon {
+  background: linear-gradient(150deg, rgb(var(--tint) / 0.3), rgb(var(--tint) / 0.08) 55%, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--glass-border);
+  border-radius: 32%;
+  box-shadow: var(--glass-shadow);
+  color: color-mix(in srgb, rgb(var(--tint)) calc(100% - var(--glass-tint-mix)), #000);
+}
+
+/* Translucent surface with blur; solid where backdrop-filter is unsupported. */
+.frosted {
+  background: var(--surface);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .frosted {
+    background: var(--frosted-bg);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
