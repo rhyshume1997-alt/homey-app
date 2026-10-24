@@ -11,7 +11,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/.env.supabase-test.local"
 SUPABASE="${SUPABASE_BIN:-supabase}"
-EXCLUDE="studio,mailpit,realtime,edge-runtime,logflare,vector,imgproxy,postgres-meta,supavisor"
+EXCLUDE="studio,realtime,edge-runtime,logflare,vector,imgproxy,supavisor,postgres-meta"
 
 cmd_start() {
   (cd "$ROOT" && "$SUPABASE" start -x "$EXCLUDE")
