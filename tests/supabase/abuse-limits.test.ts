@@ -32,8 +32,8 @@ describe("kill switch and creation rate limit through the real API", () => {
     await db(async (c) => {
       for (let i = 0; i < 2; i++) {
         await c.query(
-          "insert into public.audit_log (household_id, actor_user_id, action, entity_type, entity_id, summary) values ($1,$2,'household.created','household',$1::text,'seed')",
-          [hh, u.id],
+          "insert into public.audit_log (household_id, actor_user_id, action, entity_type, entity_id, summary) values ($1::uuid,$2::uuid,'household.created','household',$3,'seed')",
+          [hh, u.id, hh],
         );
       }
     });
