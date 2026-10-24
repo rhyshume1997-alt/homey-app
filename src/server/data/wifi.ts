@@ -88,6 +88,21 @@ export async function listWifiForPage(s: HouseholdSession): Promise<Result<WifiP
   return { ok: true, data: out };
 }
 
+/** Home card data: names and flags only. Nothing is decrypted and no QR is built. */
+export async function listWifiNames(s: HouseholdSession): Promise<Result<WifiNetworkView[]>> {
+  const db = await createUserClient();
+  if (!db) return { ok: false, error: MSG.load };
+  const { data, error } = await db
+    .from("wifi_networks")
+    .select("id,ssid,security,hidden,is_guest")
+    .eq("household_id", s.householdId)
+    .order("is_guest", { ascending: true })
+    .order("created_at", { ascending: true });
+  const parsed = z.array(RowSchema.omit({ password_ciphertext: true })).safeParse(data);
+  if (error || !parsed.success) return { ok: false, error: MSG.load };
+  return { ok: true, data: parsed.data };
+}
+
 /** Returns the plaintext password to a signed-in member of the owning household only. */
 export async function revealPassword(s: HouseholdSession, id: string): Promise<RevealResult> {
   if (!allowReveal(s.userId)) return { ok: false, error: MSG.rate };

@@ -145,6 +145,7 @@ export function Dashboard({
   contributions,
   showSnags = true,
   hub,
+  wifi,
 }: {
   displayName: string;
   data: DashboardData;
@@ -156,6 +157,8 @@ export function Dashboard({
   showSnags?: boolean;
   /** The tappable area cards (what used to be under More), shown first under the greeting. */
   hub?: ReactNode;
+  /** Wifi share card (streamed: it reads the wifi table). */
+  wifi?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -223,6 +226,7 @@ export function Dashboard({
           )}
         </Card>
         {contributions}
+        {wifi}
         <AwaitingRepliesCard data={data.awaiting} now={now} />
         <SuppliesCard data={data.supplies} />
         <MaintenanceCard items={data.maintenance} today={data.today} datePrefs={datePrefs} />

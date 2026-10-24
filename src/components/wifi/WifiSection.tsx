@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
+import { useWifiShare } from "./useWifiShare";
 import type { FormAction } from "@/components/tasks/types";
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, FIELD, LABEL } from "@/components/tasks/styles";
 import { WIFI_LIMITS, WIFI_SECURITIES, WIFI_SECURITY_LABEL, type RevealResult, type WifiNetworkView } from "@/contracts/wifi";
@@ -11,6 +12,9 @@ export type WifiActions = {
   save: FormAction;
   remove: FormAction;
 };
+
+// 44px tap area; the visible box is the 24px content area (filled when ticked).
+const CHECK = "size-11 shrink-0 cursor-pointer appearance-none rounded-xl bg-border bg-clip-content p-2.5 checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const NOTE = "A web app can't detect when someone joins your wifi. Show this QR to guests.";
 
@@ -42,11 +46,11 @@ function NetworkForm({ network, action, submitLabel }: { network?: WifiNetwork; 
           className={FIELD}
         />
       </label>
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" name="hidden" defaultChecked={network?.hidden} /> Hidden network
+      <label className="flex items-center gap-1 text-sm font-medium">
+        <input type="checkbox" className={CHECK} name="hidden" defaultChecked={network?.hidden} /> Hidden network
       </label>
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" name="is_guest" defaultChecked={network ? network.is_guest : true} /> Guest network
+      <label className="flex items-center gap-1 text-sm font-medium">
+        <input type="checkbox" className={CHECK} name="is_guest" defaultChecked={network ? network.is_guest : true} /> Guest network
       </label>
       {state?.error && <p role="alert" className="text-sm font-medium text-warning-fg">{state.error}</p>}
       {state?.ok && <p role="status" className="text-sm text-muted">Saved.</p>}
@@ -67,57 +71,10 @@ function RemoveForm({ id, action }: { id: string; action: FormAction }) {
 }
 
 function NetworkCard({ network, actions }: { network: WifiNetwork; actions: WifiActions }) {
-  const [password, setPassword] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const open = network.security === "nopass";
-
-  async function fetchPassword(): Promise<string | null> {
-    if (password !== null) return password;
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await actions.reveal(network.id);
-      if (!r.ok) {
-        setError(r.error);
-        return null;
-      }
-      setPassword(r.password);
-      return r.password;
-    } catch {
-      setError("Something went wrong. Please try again.");
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function share() {
-    setNotice(null);
-    const pw = open ? "" : await fetchPassword();
-    if (pw === null) return;
-    const text = open ? `Wifi: ${network.ssid}` : `Wifi: ${network.ssid} / ${pw}`;
-    try {
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: network.ssid, text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      setNotice("Copied to the clipboard.");
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      try {
-        await navigator.clipboard.writeText(text);
-        setNotice("Copied to the clipboard.");
-      } catch {
-        setError("Could not share or copy. Reveal the password and share it by hand.");
-      }
-    }
-  }
+  const { password, error, notice, busy, open, fetchPassword, share, copyPassword, hide } = useWifiShare(network, actions.reveal);
 
   return (
-    <section aria-label={network.ssid} data-testid="wifi-network" className="flex flex-col gap-3">
+    <section id={`wifi-${network.id}`} aria-label={network.ssid} data-testid="wifi-network" className="flex flex-col gap-3">
       <div className="rounded-lg border border-border bg-surface p-4">
         <h2 className="text-lg font-semibold">{network.ssid}</h2>
         <p className="text-sm text-muted">
@@ -136,7 +93,7 @@ function NetworkCard({ network, actions }: { network: WifiNetwork; actions: Wifi
             ) : (
               <>
                 <span data-testid="wifi-password" className="break-all font-mono text-base">{password}</span>
-                <button type="button" onClick={() => setPassword(null)} className={BTN_SECONDARY}>Hide</button>
+                <button type="button" onClick={hide} className={BTN_SECONDARY}>Hide</button>
               </>
             )}
           </div>
@@ -156,7 +113,10 @@ function NetworkCard({ network, actions }: { network: WifiNetwork; actions: Wifi
         </div>
       )}
 
-      <button type="button" onClick={share} disabled={busy} className={BTN_SECONDARY}>Share</button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={share} disabled={busy} className={BTN_SECONDARY}>Share</button>
+        {!open && <button type="button" onClick={copyPassword} disabled={busy} className={BTN_SECONDARY}>Copy password</button>}
+      </div>
       {notice && <p role="status" className="text-sm text-muted">{notice}</p>}
       <p className="text-center text-sm text-muted">{NOTE}</p>
 
@@ -183,6 +143,13 @@ export function WifiSection({ networks, actions }: { networks: WifiNetwork[]; ac
       ))}
       <section aria-label="Add a network" className="rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-3 text-lg font-semibold">{networks.length === 0 ? "Add your wifi" : "Add another network"}</h2>
+        {networks.length === 0 && (
+          <p className="mb-3 text-sm text-muted">
+            Phones don&apos;t let apps see which wifi you&apos;re on, so add it once here. To copy the password of the
+            network you&apos;re on: iPhone, Settings › Wi-Fi › ⓘ next to the network › Password. Android, Settings ›
+            Wi-Fi › the network › Share.
+          </p>
+        )}
         <NetworkForm action={actions.save} submitLabel="Add network" />
         <p className="mt-3 text-sm text-muted">The password is stored encrypted and is only shown to household members. Never shared as a public link.</p>
       </section>

@@ -148,7 +148,7 @@ const meal_ingredients = [
   { id: uid(), household_id: H, meal_id: "0000d18a-0000-4000-8000-000000000003", name: "Kidney beans", quantity: "2 tins", unit_price_estimate: 0.8, supply_id: null, created_by: RHYS, created_at: iso(100), updated_at: iso(100) },
 ];
 const tables = {
-  rooms, wishlist_items, checklist_items, emergency_items, wifi_networks: [], household_events, appliances, meter_readings,
+  rooms, wishlist_items, checklist_items, emergency_items, wifi_networks: [{ id: "00000000-0000-4000-8000-0000000000f1", household_id: H, ssid: "Example-Home", security: "WPA", hidden: false, is_guest: false, password_ciphertext: null, created_at: "2026-01-01T00:00:00Z" }], household_events, appliances, meter_readings,
   meals, meal_ingredients, kudos: [], ai_digests: [],
   household_records, household_members: members, household_invites: [], tasks, snags, audit_log, bin_collections, documents, shopping_items,
   supplies, maintenance_items, maintenance_log, notifications, notification_reads: [], email_threads, ai_usage,

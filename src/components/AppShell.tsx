@@ -87,7 +87,7 @@ export function AppShell({ children, showSnags = true }: { children: React.React
         <AppNav variant="sidebar" hide={hide} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-[var(--topbar-height)] items-center border-b border-border bg-surface px-4 justify-between lg:hidden">
+        <header className="sticky top-0 z-20 flex h-[calc(var(--topbar-height)+env(safe-area-inset-top))] items-center justify-between border-b border-border bg-surface pt-[env(safe-area-inset-top)] pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] lg:hidden">
           <div className="flex items-center gap-1">
             <BackButton className="-ml-2 inline-flex" />
             <p className="text-lg font-semibold">Our Home</p>
