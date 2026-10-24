@@ -77,7 +77,9 @@ export async function getNeedsEntries(session: HouseholdSession, today: string):
 
 export async function getNeedsDoing(session: HouseholdSession, today: string): Promise<NeedsDoing> {
   const { entries, partial } = await getNeedsEntries(session, today);
-  return { items: entries.map((e) => e.item), partial };
+  // Someone who hid the snag list doesn't get snag reminders from Homey either.
+  const items = entries.map((e) => e.item).filter((i) => session.showSnags !== false || i.kind !== "snags");
+  return { items, partial };
 }
 
 /** Badge number: overdue + today + renewals within 7 days. Zero when signed out. */

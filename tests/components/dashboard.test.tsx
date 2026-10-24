@@ -111,7 +111,7 @@ describe("Dashboard", () => {
       <Dashboard displayName="Alex" data={{ ...base, tasks: [], snags: [], openSnagCount: 0, activity: [], renewals: [], expenses: { count: 0, lines: [] } }} now={now} />,
     );
     expect(screen.getByText("Nothing due today or overdue.")).toBeTruthy();
-    expect(screen.getByText("No open snags.")).toBeTruthy();
+    expect(screen.getByText(/No open snags\./)).toBeTruthy();
     expect(screen.getByText("No activity yet.")).toBeTruthy();
     expect(screen.getByText("Nothing due in the next 90 days.")).toBeTruthy();
     expect(screen.getByText("Nothing recorded yet.")).toBeTruthy();
@@ -120,3 +120,17 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Good morning, Alex");
   });
 });
+
+describe("Dashboard with the snag list hidden", () => {
+  it("leaves out the snag card", () => {
+    render(<Dashboard displayName="Alex" data={data} now={now} contributions={contributionsSlot} showSnags={false} />);
+    expect(screen.queryByRole("link", { name: "All snags" })).toBeNull();
+    expect(screen.queryByText("Cracked tile")).toBeNull();
+  });
+
+  it("points to Settings when every snag is closed", () => {
+    render(<Dashboard displayName="Alex" data={{ ...data, openSnagCount: 0, snags: [] }} now={now} contributions={contributionsSlot} />);
+    expect(screen.getByRole("link", { name: "Hide the snag list in Settings" }).getAttribute("href")).toBe("/settings");
+  });
+});
+

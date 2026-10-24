@@ -47,6 +47,15 @@ beforeEach(() => {
 });
 
 describe("getNeedsDoing", () => {
+  it("leaves out snag reminders for someone who hid the snag list, and keeps everything else", async () => {
+    mocks.tables.tasks = { data: [taskRow(T1, "2026-10-20")], error: null };
+    mocks.tables.snags = { data: [{ ...stamp, id: "44444444-4444-4444-8444-444444444441", title: "Cracked tile", location: null, notes: null, status: "open", priority: "low", fixed_at: null, created_at: "2026-01-01T00:00:00Z" }], error: null };
+    const shown = await getNeedsDoing({ ...S, showSnags: true } as HouseholdSession, "2026-10-21");
+    expect(shown.items.some((i) => i.kind === "snags")).toBe(true);
+    const hidden = await getNeedsDoing({ ...S, showSnags: false } as HouseholdSession, "2026-10-21");
+    expect(hidden.items.some((i) => i.kind === "snags")).toBe(false);
+    expect(hidden.items.map((i) => i.key)).toContain(`task:${T1}`);
+  });
   it("returns items and partial=false when everything loads", async () => {
     mocks.tables.tasks = { data: [taskRow(T1, "2026-10-20")], error: null };
     mocks.bins = { ok: true, days: [{ date: "2026-10-22", bins: ["Blue"], putOutTonight: true }], lastSynced: null };

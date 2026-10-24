@@ -43,14 +43,14 @@ describe("AppNav", () => {
     expect(screen.getByRole("link", { name: /home/i }).getAttribute("href")).toBe("/");
     expect(screen.getByRole("link", { name: /tasks/i }).getAttribute("href")).toBe("/tasks");
     expect(screen.getByRole("link", { name: /snags/i }).getAttribute("href")).toBe("/snags");
-    expect(screen.getByRole("link", { name: /more/i }).getAttribute("href")).toBe("/more");
+    expect(screen.getByRole("link", { name: /settings/i }).getAttribute("href")).toBe("/settings");
     expect(screen.getByRole("link", { name: /money/i }).getAttribute("href")).toBe("/money");
   });
 });
 
 describe("navigation and header", () => {
   it("keeps the bottom nav to five available items", () => {
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Home", "Tasks", "Snags", "Money", "More"]);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Home", "Tasks", "Snags", "Money", "Settings"]);
     expect(NAV_ITEMS.every((i) => i.available)).toBe(true);
   });
   it("bell links to notifications and shows a badge only when there are unread", () => {
