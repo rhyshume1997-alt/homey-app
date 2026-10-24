@@ -9,7 +9,8 @@ const PORT = 3300;
 const localChromium = "/opt/pw-browsers/chromium";
 const launch = existsSync(localChromium) ? { launchOptions: { executablePath: localChromium } } : {};
 // Same household id as H in tests/mobile/fake-supabase.mjs, so the primary-household features behave as before.
-const env = { NEXT_DIST_DIR: ".next-mobile", PATH: process.env.PATH ?? "", PRIMARY_HOUSEHOLD_ID: "0000aaaa-0000-4000-8000-000000000001" };
+// TEST ONLY encryption key (all zero bytes) so the wifi card renders; never a real key.
+const env = { NEXT_DIST_DIR: ".next-mobile", PATH: process.env.PATH ?? "", PRIMARY_HOUSEHOLD_ID: "0000aaaa-0000-4000-8000-000000000001", GOOGLE_TOKEN_ENCRYPTION_KEY: "A".repeat(43) + "=" };
 
 const iphone = devices["iPhone 13"];
 const android = devices["Pixel 7"];

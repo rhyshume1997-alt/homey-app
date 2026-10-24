@@ -231,3 +231,30 @@ test.describe("Add to Home Screen", () => {
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", /width=device-width.*viewport-fit=cover/);
   });
 });
+
+test.describe("installed app under the status bar", () => {
+  test("Back sits fully below a notch and stays a 44px target", async ({ page }) => {
+    await signIn(page);
+    // The installed app draws under the status bar (black-translucent + viewport-fit=cover).
+    // Emulate an iPhone notch: 47px top inset.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 47, bottom: 34, left: 0, right: 0 } });
+    await page.goto("/wifi");
+    const box = await page.getByRole("button", { name: "Back" }).first().boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(47);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+  });
+});
+
+test.describe("wifi on Home", () => {
+  test("the Wifi card shows the saved network with Share, Copy password and QR", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/");
+    const card = page.getByRole("region", { name: "Wifi" });
+    await expect(card.getByText("Example-Home")).toBeVisible();
+    for (const name of ["Share", "Copy password"]) await expect(card.getByRole("button", { name })).toBeVisible();
+    await expect(card.getByRole("link", { name: "QR code" })).toHaveAttribute("href", /^\/wifi#wifi-/);
+  });
+});
