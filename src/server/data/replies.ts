@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { maybeAutoSync, syncMyGmail } from "@/server/integrations/google/gmail";
 import { GMAIL_SCOPE, hasScope } from "@/server/integrations/google/scopes";
@@ -29,11 +30,12 @@ export function parseThreadId(fd: FormData): string | null {
 
 /** Oldest waiting first. */
 export async function listThreads(): Promise<Result<EmailThread[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("email_threads")
-    .select(THREAD_COLUMNS)
+    .select(THREAD_COLUMNS).eq("household_id", householdId)
     .order("last_message_at", { ascending: true })
     .limit(500);
   if (error || !data) return { ok: false, error: MSG.load };
@@ -61,7 +63,7 @@ export async function isGmailConnected(): Promise<boolean> {
 
 /** Manual "Sync from Gmail" for the current user's own mailbox. */
 export async function syncNow(s: HouseholdSession): Promise<Result<number>> {
-  const r = await syncMyGmail(s.displayName);
+  const r = await syncMyGmail(s.displayName, s.householdId);
   if (r.status === "ok") return { ok: true, data: r.count };
   if (r.status === "not_connected") return { ok: false, error: "Connect Google first (Settings, Google connection)." };
   return { ok: false, error: r.message };
@@ -70,7 +72,7 @@ export async function syncNow(s: HouseholdSession): Promise<Result<number>> {
 /** Viewing the page syncs at most every 10 minutes for connected users. Never throws. */
 export async function autoSyncIfDue(s: HouseholdSession): Promise<void> {
   if (!(await isGmailConnected())) return;
-  await maybeAutoSync(s.displayName);
+  await maybeAutoSync(s.displayName, s.householdId);
 }
 
 /** Status only: the one column members may change. */

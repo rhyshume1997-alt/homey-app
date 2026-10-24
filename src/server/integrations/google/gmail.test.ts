@@ -186,24 +186,25 @@ describe("syncMyGmail", () => {
   const access = { accessToken: "tok", userId: "u1" };
   it("is off when not connected or no key", async () => {
     const rpc = vi.fn();
-    expect(await syncMyGmail("Alex", { access: null, rpc, keyB64: KEY_B64 })).toEqual({ status: "not_connected" });
+    expect(await syncMyGmail("Alex", "h1", { access: null, rpc, keyB64: KEY_B64 })).toEqual({ status: "not_connected" });
     expect(rpc).not.toHaveBeenCalled();
   });
   it("sends only safe fields to the RPC with the caller's display name", async () => {
     const rpc = vi.fn(async () => ({ data: 2, error: null }));
-    const r = await syncMyGmail("Alex", { access, rpc, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 });
+    const r = await syncMyGmail("Alex", "h1", { access, rpc, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 });
     expect(r).toEqual({ status: "ok", count: 2 });
     const [fn, args] = rpc.mock.calls[0] as unknown as [string, { p_member: string; p_threads: Record<string, unknown>[] }];
     expect(fn).toBe("sync_my_email_threads");
     expect(args.p_member).toBe("Alex");
+    expect((args as unknown as { p_household: string }).p_household).toBe("h1");
     expect(JSON.stringify(args)).not.toMatch(/@/);
     for (const t of args.p_threads) expect(Object.keys(t).sort()).toEqual(["counterpart_domain", "label_flag", "last_from", "last_message_at", "subject", "thread_hash"]);
   });
   it("reports fixed errors", async () => {
     const rpc = vi.fn(async () => ({ data: null, error: new Error("secret db detail") }));
-    const r = await syncMyGmail("Alex", { access, rpc, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 });
+    const r = await syncMyGmail("Alex", "h1", { access, rpc, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 });
     expect(r).toEqual({ status: "error", message: "Could not save the synced threads." });
-    const r2 = await syncMyGmail("Alex", { access, rpc, fetch: asFetch(gmailFetch({ fail: "profile" })), keyB64: KEY_B64 });
+    const r2 = await syncMyGmail("Alex", "h1", { access, rpc, fetch: asFetch(gmailFetch({ fail: "profile" })), keyB64: KEY_B64 });
     expect(r2.status).toBe("error");
   });
 });
@@ -214,11 +215,11 @@ describe("maybeAutoSync", () => {
     const now = Date.UTC(2026, 9, 21, 12, 0, 0);
     const rpcFor = (last: string | null) => vi.fn(async (fn: string) => (fn === "my_gmail_sync_at" ? { data: last, error: null } : { data: 1, error: null }));
     const fresh = rpcFor(new Date(now - 9 * 60_000).toISOString());
-    expect(await maybeAutoSync("Alex", { access, rpc: fresh, now: () => now, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 })).toBeNull();
+    expect(await maybeAutoSync("Alex", "h1", { access, rpc: fresh, now: () => now, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 })).toBeNull();
     expect(fresh).toHaveBeenCalledTimes(1);
     for (const last of [new Date(now - 11 * 60_000).toISOString(), null]) {
       const rpc = rpcFor(last);
-      expect(await maybeAutoSync("Alex", { access, rpc, now: () => now, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 })).toMatchObject({ status: "ok" });
+      expect(await maybeAutoSync("Alex", "h1", { access, rpc, now: () => now, fetch: asFetch(gmailFetch()), keyB64: KEY_B64 })).toMatchObject({ status: "ok" });
       expect(rpc.mock.calls.map((c) => c[0])).toEqual(["my_gmail_sync_at", "sync_my_email_threads"]);
     }
   });

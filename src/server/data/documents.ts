@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { DocumentCategorySchema, DocumentSchema, type RecordOption, type VaultDocument } from "@/components/documents/types";
 import { expiringSoon, sanitiseFilename, validSize, verifyMime } from "@/components/documents/files";
@@ -52,18 +53,20 @@ export function parseDocumentId(v: unknown): string | null {
 }
 
 export async function listDocuments(): Promise<Result<VaultDocument[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("documents").select(COLUMNS).order("created_at", { ascending: false }).limit(1000);
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("documents").select(COLUMNS).eq("household_id", householdId).order("created_at", { ascending: false }).limit(1000);
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(DocumentSchema).safeParse(data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: MSG.load };
 }
 
 export async function listRecordOptions(): Promise<RecordOption[]> {
-  const db = await createUserClient();
-  if (!db) return [];
-  const { data } = await db.from("household_records").select("id, title").order("title").limit(2000);
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
+  const { data } = await db.from("household_records").select("id, title").eq("household_id", householdId).order("title").limit(2000);
   const parsed = z.array(z.object({ id: z.uuid(), title: z.string() })).safeParse(data ?? []);
   return parsed.success ? parsed.data : [];
 }

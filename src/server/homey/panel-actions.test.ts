@@ -13,10 +13,14 @@ const mocks = vi.hoisted(() => ({
   storeOk: true,
   entries: [] as unknown[],
   importItem: null as unknown,
+  primary: "11111111-1111-4111-8111-111111111111" as string | undefined,
 }));
 
 vi.mock("@/server/auth/session", () => ({ requireSession: async () => S }));
-vi.mock("@/server/env", () => ({ getServerEnv: () => ({ AI_MONTHLY_CAP_GBP: 5 }) }));
+vi.mock("@/server/env", () => ({
+  getServerEnv: () => ({ AI_MONTHLY_CAP_GBP: 5 }),
+  isPrimaryHousehold: (id: string) => id === mocks.primary,
+}));
 vi.mock("@/server/data/dashboard", () => ({ todayInLondon: () => "2026-10-21" }));
 vi.mock("@/server/ai/usage", () => ({ getMonthSpendPence: async () => 120 }));
 vi.mock("@/server/homey/import-check", () => ({ importCheckItem: async () => mocks.importItem }));
@@ -54,11 +58,20 @@ beforeEach(() => {
   mocks.pending = [];
   mocks.stored = [];
   mocks.storeOk = true;
+  mocks.primary = H;
   mocks.importItem = null;
   mocks.entries = [maintEntry, supplyEntry, noProposal];
 });
 
 describe("proposeFromItemAction", () => {
+  it("is refused and stores nothing for a non-primary household or unset env", async () => {
+    for (const primary of ["22222222-2222-4222-8222-222222222222", undefined]) {
+      mocks.primary = primary;
+      expect((await proposeFromItemAction(`maint:${M1}`)).ok).toBe(false);
+      expect(mocks.stored).toEqual([]);
+    }
+  });
+
   it("stores a pending proposal built from server data and returns its id and text", async () => {
     const r = await proposeFromItemAction(`maint:${M1}`);
     expect(r).toEqual({ ok: true, proposalId: "a1a10000-0000-4000-8000-000000000001", text: "Add task: Do: Bleed radiators (due 2026-10-21)" });

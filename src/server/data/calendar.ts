@@ -1,5 +1,6 @@
 import "server-only";
-import { createUserClient } from "@/server/db/supabase";
+import type { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import { daysUntil, trafficLight } from "@/components/status";
 import type { CalendarItem } from "@/contracts/calendar";
 import { listEvents } from "./household-events";
@@ -14,17 +15,17 @@ type Db = NonNullable<Awaited<ReturnType<typeof createUserClient>>>;
 type Row = Record<string, unknown>;
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
-async function withDb(fn: (db: Db) => PromiseLike<{ data: unknown; error: unknown }>): Promise<Row[]> {
-  const db = await createUserClient();
-  if (!db) throw new Error("no client");
-  const { data, error } = await fn(db);
+async function withDb(fn: (db: Db, householdId: string) => PromiseLike<{ data: unknown; error: unknown }>): Promise<Row[]> {
+  const sc = await scopedDb();
+  if (!sc) throw new Error("no client");
+  const { data, error } = await fn(sc.db, sc.householdId);
   if (error || !Array.isArray(data)) throw new Error("query failed");
   return data as Row[];
 }
 
 const tasks: CalendarSource = async (r) =>
-  (await withDb((db) =>
-    db.from("tasks").select("id, title, due_date").eq("status", "open")
+  (await withDb((db, hid) =>
+    db.from("tasks").select("id, title, due_date").eq("household_id", hid).eq("status", "open")
       .gte("due_date", r.from).lte("due_date", r.to).limit(1000),
   )).map((t) => ({
     key: `task:${str(t.id)}`, date: str(t.due_date), title: str(t.title), kind: "task" as const,
@@ -32,8 +33,8 @@ const tasks: CalendarSource = async (r) =>
   }));
 
 const bins: CalendarSource = async (r) =>
-  (await withDb((db) =>
-    db.from("bin_collections").select("collection_date, bin_name")
+  (await withDb((db, hid) =>
+    db.from("bin_collections").select("collection_date, bin_name").eq("household_id", hid)
       .gte("collection_date", r.from).lte("collection_date", r.to).limit(1000),
   )).map((b) => ({
     key: `bins:${str(b.collection_date)}:${str(b.bin_name)}`, date: str(b.collection_date),
@@ -42,8 +43,8 @@ const bins: CalendarSource = async (r) =>
   }));
 
 const records: CalendarSource = async (r) => {
-  const rows = await withDb((db) =>
-    db.from("household_records").select("id, title, provider, renewal_date, end_date")
+  const rows = await withDb((db, hid) =>
+    db.from("household_records").select("id, title, provider, renewal_date, end_date").eq("household_id", hid)
       .or(`and(renewal_date.gte.${r.from},renewal_date.lte.${r.to}),and(end_date.gte.${r.from},end_date.lte.${r.to})`)
       .limit(1000),
   );
@@ -61,8 +62,8 @@ const records: CalendarSource = async (r) => {
 };
 
 const maintenance: CalendarSource = async (r) =>
-  (await withDb((db) =>
-    db.from("maintenance_items").select("id, title, next_due_on")
+  (await withDb((db, hid) =>
+    db.from("maintenance_items").select("id, title, next_due_on").eq("household_id", hid)
       .gte("next_due_on", r.from).lte("next_due_on", r.to).limit(1000),
   )).map((m) => ({
     key: `maintenance:${str(m.id)}`, date: str(m.next_due_on), title: str(m.title), kind: "maintenance" as const,
@@ -70,8 +71,8 @@ const maintenance: CalendarSource = async (r) =>
   }));
 
 const documents: CalendarSource = async (r) =>
-  (await withDb((db) =>
-    db.from("documents").select("id, title, expires_on")
+  (await withDb((db, hid) =>
+    db.from("documents").select("id, title, expires_on").eq("household_id", hid)
       .gte("expires_on", r.from).lte("expires_on", r.to).limit(1000),
   )).map((d) => ({
     key: `document:${str(d.id)}`, date: str(d.expires_on), title: `${str(d.title)} expires`, kind: "document" as const,

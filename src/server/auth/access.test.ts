@@ -123,3 +123,48 @@ describe("sanitizeNext", () => {
     expect(sanitizeNext("/some/page?a=1")).toBe("/some/page?a=1");
   });
 });
+
+describe("decideAccess: onboarding and invites (auth required, membership not required here)", () => {
+  const TOKEN = "A".repeat(43);
+
+  it("sends signed-out visitors to login for /onboarding and 401s nothing", () => {
+    expect(decideAccess("/onboarding", null)).toBe("redirect-login");
+    expect(decideAccess("/onboarding/", null)).toBe("redirect-login");
+    expect(decideAccess("/Onboarding", null)).toBe("redirect-login");
+  });
+
+  it("allows signed-in people (membership is checked by requireSession, not by the proxy)", () => {
+    expect(decideAccess("/onboarding", session)).toBe("allow");
+    expect(decideAccess(`/invite/${TOKEN}`, session)).toBe("allow");
+  });
+
+  it("lets a well-formed invite link reach its handler signed out (it only sets a cookie and redirects)", () => {
+    expect(decideAccess(`/invite/${TOKEN}`, null)).toBe("allow");
+    expect(decideAccess(`/invite/${"a-_Z09".repeat(7)}a`, null)).toBe("allow");
+  });
+
+  it.each([
+    "/invite",
+    "/invite/",
+    `/invite/${"A".repeat(42)}`,
+    `/invite/${"A".repeat(44)}`,
+    `/invite/${"A".repeat(43)}/`,
+    `/invite/${"A".repeat(43)}/x`,
+    `/invite/${"A".repeat(43)}x`,
+    `/invite/${"A".repeat(42)}%41`,
+    `/invite/${"A".repeat(42)}.`,
+    `/invite/${"A".repeat(42)}=`,
+    `/invite/${"A".repeat(42)}+`,
+    `/invite/${"A".repeat(42)}\\`,
+    `/invite/../onboarding`,
+    `/invite/..%2fx`,
+    `/invite/%2e%2e/${"A".repeat(43)}`,
+    `//invite/${"A".repeat(43)}`,
+    `/invite//${"A".repeat(43)}`,
+    `/Invite/${"A".repeat(43)}`,
+    `/invite/${"A".repeat(43)}\u0000`,
+    `/x/invite/${"A".repeat(43)}`,
+  ])("does not treat %j as a public invite link", (p) => {
+    expect(decideAccess(p, null)).not.toBe("allow");
+  });
+});

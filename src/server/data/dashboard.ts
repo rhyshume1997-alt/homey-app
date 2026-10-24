@@ -1,7 +1,7 @@
 import "server-only";
 import { SnagSchema } from "@/contracts/snags";
 import { TaskSchema } from "@/contracts/tasks";
-import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import { loadActivity } from "./activity";
 import { daysBetween, expenseRecords, sortRenewals } from "@/components/money/format";
 import { parseRecords } from "./records";
@@ -36,14 +36,15 @@ const EMPTY_CORE: Core = {
 
 /** Tasks, snags, records and activity. Each part is null when its own query failed. */
 async function loadCore(today: string): Promise<Core> {
-  const supabase = await createUserClient();
-  if (!supabase) return EMPTY_CORE;
+  const sc = await scopedDb();
+  if (!sc) return EMPTY_CORE;
+  const { db: supabase, householdId } = sc;
 
   const [tasksRes, snagsRes, activity, recordsRes] = await Promise.allSettled([
-    supabase.from("tasks").select("*").eq("status", "open").order("due_date", { ascending: true }).limit(500),
-    supabase.from("snags").select("*").neq("status", "fixed").limit(500),
+    supabase.from("tasks").select("*").eq("household_id", householdId).eq("status", "open").order("due_date", { ascending: true }).limit(500),
+    supabase.from("snags").select("*").eq("household_id", householdId).neq("status", "fixed").limit(500),
     loadActivity(5, null),
-    supabase.from("household_records").select("*").limit(2000),
+    supabase.from("household_records").select("*").eq("household_id", householdId).limit(2000),
   ]);
   const tr = ok(tasksRes);
   const sr = ok(snagsRes);

@@ -30,3 +30,6 @@ npm-debug.log*
 
 # Personal household data (seed imports). Never commit.
 private/
+
+# Local Supabase test stack credentials (written by scripts/supabase-test.sh)
+.env.supabase-test.local

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { HouseholdRecordSchema, type HouseholdRecord } from "@/contracts/records";
 
@@ -27,9 +28,10 @@ export function parseRecordId(fd: FormData): string | null {
 }
 
 export async function listRecords(): Promise<Result<HouseholdRecord[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("household_records").select("*").limit(2000);
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("household_records").select("*").eq("household_id", householdId).limit(2000);
   if (error || !data) return { ok: false, error: MSG.load };
   return { ok: true, data: parseRecords(data) };
 }

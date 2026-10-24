@@ -1,4 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+
+const primary = vi.hoisted(() => ({ id: "h1" as string | undefined }));
+vi.mock("@/server/env", () => ({
+  getServerEnv: () => ({ AI_MONTHLY_CAP_GBP: 5 }),
+  isPrimaryHousehold: (id: string) => !!primary.id && id === primary.id,
+}));
 import type { NeedItem } from "@/components/homey/types";
 import type { HouseholdSession } from "@/server/auth/session";
 import type { AiDeps } from "./client";
@@ -53,6 +59,22 @@ const OPTS = { firstName: "Alex", otherFirstName: "Sam", trigger: "first_open" a
 const sentBody = (fetch: ReturnType<typeof vi.fn>) => JSON.parse((fetch.mock.calls[0] as [string, RequestInit])[1].body as string);
 
 describe("getOrCreateDigest", () => {
+  it("is off (null, no store access, no API call) for a non-primary household or when PRIMARY_HOUSEHOLD_ID is unset", async () => {
+    const saved = primary.id;
+    try {
+      for (const id of ["other", undefined]) {
+        primary.id = id;
+        const { deps, fetch, insert } = setup();
+        expect(await getOrCreateDigest(session, ITEMS, TODAY, { ...OPTS, force: true }, deps)).toBeNull();
+        expect(deps.store.listMine).not.toHaveBeenCalled();
+        expect(fetch).not.toHaveBeenCalled();
+        expect(insert).not.toHaveBeenCalled();
+      }
+    } finally {
+      primary.id = saved;
+    }
+  });
+
   it("generates with Haiku and a forced submit_digest tool, maps refs to keys, records usage and caches", async () => {
     const { deps, fetch, insert, recordUsage } = setup();
     const d = await getOrCreateDigest(session, ITEMS, TODAY, OPTS, deps);

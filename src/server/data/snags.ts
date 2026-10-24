@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { SnagInputSchema, SnagSchema, SnagStatusSchema, type Snag, type SnagInput } from "@/contracts/snags";
 
@@ -38,9 +39,10 @@ export function parseStatus(fd: FormData) {
 }
 
 export async function listSnags(): Promise<Result<Snag[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("snags").select("*");
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("snags").select("*").eq("household_id", householdId);
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(SnagSchema).safeParse(data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: MSG.load };

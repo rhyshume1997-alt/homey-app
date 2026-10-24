@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { EventInputSchema, HouseholdEventSchema, type EventInput, type HouseholdEvent } from "@/contracts/calendar";
 
@@ -31,10 +32,11 @@ export function parseEventId(fd: FormData): string | null {
 }
 
 export async function listEvents(from: string, to: string): Promise<Result<HouseholdEvent[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
-    .from("household_events").select("*").gte("starts_on", from).lte("starts_on", to)
+    .from("household_events").select("*").eq("household_id", householdId).gte("starts_on", from).lte("starts_on", to)
     .order("starts_on").limit(1000);
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(HouseholdEventSchema).safeParse(data);
@@ -42,9 +44,10 @@ export async function listEvents(from: string, to: string): Promise<Result<House
 }
 
 export async function listRoomOptions(): Promise<{ id: string; name: string }[]> {
-  const db = await createUserClient();
-  if (!db) return [];
-  const { data } = await db.from("rooms").select("id, name").order("sort_order");
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
+  const { data } = await db.from("rooms").select("id, name").eq("household_id", householdId).order("sort_order");
   const parsed = z.array(z.object({ id: z.uuid(), name: z.string() })).safeParse(data ?? []);
   return parsed.success ? parsed.data : [];
 }

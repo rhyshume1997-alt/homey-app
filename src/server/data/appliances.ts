@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import {
   ApplianceDraftSchema, ApplianceInputSchema, ApplianceSchema,
@@ -43,9 +44,10 @@ const COLUMNS =
   "id, household_id, room_id, name, make, model, serial_last4, purchase_date, warranty_end, source, manual_document_id, receipt_document_id, notes, created_at, updated_at";
 
 export async function listAppliances(): Promise<Result<Appliance[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("appliances").select(COLUMNS).order("name").limit(1000);
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("appliances").select(COLUMNS).eq("household_id", householdId).order("name").limit(1000);
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(ApplianceSchema).safeParse(data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: MSG.load };
@@ -53,29 +55,32 @@ export async function listAppliances(): Promise<Result<Appliance[]>> {
 
 /** Null when it does not exist or is not visible under RLS. */
 export async function getAppliance(id: string): Promise<Appliance | null> {
-  const db = await createUserClient();
-  if (!db) return null;
-  const { data } = await db.from("appliances").select(COLUMNS).eq("id", id).maybeSingle();
+  const sc = await scopedDb();
+  if (!sc) return null;
+  const { db, householdId } = sc;
+  const { data } = await db.from("appliances").select(COLUMNS).eq("household_id", householdId).eq("id", id).maybeSingle();
   const parsed = ApplianceSchema.safeParse(data);
   return parsed.success ? parsed.data : null;
 }
 
 export async function listAppliancesForRoom(roomId: string): Promise<Appliance[]> {
   if (!parseApplianceId(roomId)) return [];
-  const db = await createUserClient();
-  if (!db) return [];
-  const { data } = await db.from("appliances").select(COLUMNS).eq("room_id", roomId).order("name").limit(200);
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
+  const { data } = await db.from("appliances").select(COLUMNS).eq("household_id", householdId).eq("room_id", roomId).order("name").limit(200);
   const parsed = z.array(ApplianceSchema).safeParse(data ?? []);
   return parsed.success ? parsed.data : [];
 }
 
 /** Warranty end dates for the calendar. Only dates a person (or an import) recorded. */
 export async function listWarrantyEnds(): Promise<WarrantyEnd[]> {
-  const db = await createUserClient();
-  if (!db) return [];
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
   const { data } = await db
     .from("appliances")
-    .select("id, name, warranty_end")
+    .select("id, name, warranty_end").eq("household_id", householdId)
     .not("warranty_end", "is", null)
     .order("warranty_end")
     .limit(1000);
@@ -86,17 +91,19 @@ export async function listWarrantyEnds(): Promise<WarrantyEnd[]> {
 }
 
 export async function listRoomOptions(): Promise<{ id: string; name: string }[]> {
-  const db = await createUserClient();
-  if (!db) return [];
-  const { data } = await db.from("rooms").select("id, name").order("sort_order").order("name").limit(200);
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
+  const { data } = await db.from("rooms").select("id, name").eq("household_id", householdId).order("sort_order").order("name").limit(200);
   const parsed = z.array(z.object({ id: z.uuid(), name: z.string() })).safeParse(data ?? []);
   return parsed.success ? parsed.data : [];
 }
 
 export async function listDocumentOptions(): Promise<{ id: string; title: string }[]> {
-  const db = await createUserClient();
-  if (!db) return [];
-  const { data } = await db.from("documents").select("id, title").order("title").limit(1000);
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
+  const { data } = await db.from("documents").select("id, title").eq("household_id", householdId).order("title").limit(1000);
   const parsed = z.array(z.object({ id: z.uuid(), title: z.string() })).safeParse(data ?? []);
   return parsed.success ? parsed.data : [];
 }

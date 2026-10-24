@@ -208,7 +208,7 @@ async function defaultRpc(fn: string, args?: Record<string, unknown>) {
 }
 
 /** Syncs the current user's own Gmail metadata into their household (RPC enforces membership + name). */
-export async function syncMyGmail(displayName: string, deps: SyncDeps = {}): Promise<SyncResult> {
+export async function syncMyGmail(displayName: string, householdId: string, deps: SyncDeps = {}): Promise<SyncResult> {
   const keyB64 = deps.keyB64 ?? getServerEnv().GOOGLE_TOKEN_ENCRYPTION_KEY;
   if (!keyB64) return { status: "not_connected" };
   const access = deps.access === undefined ? await getGoogleAccess(GMAIL_SCOPE) : deps.access;
@@ -218,7 +218,7 @@ export async function syncMyGmail(displayName: string, deps: SyncDeps = {}): Pro
       { fetch: deps.fetch, token: access.accessToken, userId: access.userId },
       deriveThreadKey(keyB64),
     );
-    const r = await (deps.rpc ?? defaultRpc)("sync_my_email_threads", { p_member: displayName, p_threads: records });
+    const r = await (deps.rpc ?? defaultRpc)("sync_my_email_threads", { p_household: householdId, p_member: displayName, p_threads: records });
     if (r.error) return { status: "error", message: "Could not save the synced threads." };
     return { status: "ok", count: records.length };
   } catch (e) {
@@ -227,14 +227,14 @@ export async function syncMyGmail(displayName: string, deps: SyncDeps = {}): Pro
 }
 
 /** Syncs on view at most every 10 minutes. Never throws; failures just leave the old data. */
-export async function maybeAutoSync(displayName: string, deps: SyncDeps = {}): Promise<SyncResult | null> {
+export async function maybeAutoSync(displayName: string, householdId: string, deps: SyncDeps = {}): Promise<SyncResult | null> {
   try {
     const rpc = deps.rpc ?? defaultRpc;
     const last = await rpc("my_gmail_sync_at");
     const t = typeof last.data === "string" ? Date.parse(last.data) : NaN;
     const now = (deps.now ?? Date.now)();
     if (!last.error && !Number.isNaN(t) && now - t < SYNC_INTERVAL_MS) return null;
-    return await syncMyGmail(displayName, deps);
+    return await syncMyGmail(displayName, householdId, deps);
   } catch {
     return null;
   }

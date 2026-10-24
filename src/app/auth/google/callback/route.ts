@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const ciphertext = encryptToken(refreshToken, key, before.userId);
-    const { error } = await supabase.rpc("store_my_google_token", { p_ciphertext: ciphertext, p_scopes: granted });
+    const { error } = await supabase.rpc("store_my_google_token", { p_household: before.householdId, p_ciphertext: ciphertext, p_scopes: granted });
     if (error) return to(request, "/settings/google?error=failed");
   } catch {
     return to(request, "/settings/google?error=failed");

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { NotificationItem } from "@/components/notifications/types";
 
 export type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -26,11 +27,12 @@ export async function refreshNotifications(): Promise<void> {
 
 /** Lists notifications visible to the caller (RLS) with the caller's own read state. */
 export async function listNotifications(userId: string, limit = 100): Promise<Result<NotificationItem[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: LOAD };
-  const { data, error } = await db
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: LOAD };
+  const { data, error } = await sc.db
     .from("notifications")
     .select("id, kind, title, body, link, created_at, notification_reads(user_id)")
+    .eq("household_id", sc.householdId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return { ok: false, error: LOAD };
@@ -53,11 +55,12 @@ const UnreadRowSchema = RowSchema.pick({ id: true, kind: true, notification_read
  * columns it needs (no titles or bodies) instead of reusing listNotifications. Same rows, same rule.
  */
 export async function unreadCount(userId: string): Promise<Result<number>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: LOAD };
-  const { data, error } = await db
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: LOAD };
+  const { data, error } = await sc.db
     .from("notifications")
     .select("id, kind, notification_reads(user_id)")
+    .eq("household_id", sc.householdId)
     .order("created_at", { ascending: false })
     .limit(500);
   if (error || !data) return { ok: false, error: LOAD };

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import {
   METER_FUELS, METER_UNITS, METER_SOURCES, MeterReadingDraftSchema, MeterReadingInputSchema,
@@ -49,11 +50,12 @@ export function parseReadingId(fd: FormData): string | null {
 }
 
 export async function listReadings(): Promise<Result<MeterReading[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("meter_readings")
-    .select("id,fuel,read_on,value,unit,source,note")
+    .select("id,fuel,read_on,value,unit,source,note").eq("household_id", householdId)
     .order("read_on", { ascending: false })
     .limit(500);
   const parsed = z.array(RowSchema).safeParse(data);

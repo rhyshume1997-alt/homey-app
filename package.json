@@ -15,6 +15,7 @@
     "scan:bundle": "node scripts/scan-bundle.mjs",
     "verify": "npm run typecheck && npm run lint && npm run check:env && npm run test && npm run build && npm run scan:bundle",
     "test:rls": "bash scripts/db-test.sh",
+    "test:supabase": "bash scripts/supabase-test.sh run",
     "test:rls:remote": "NODE_USE_ENV_PROXY=1 vitest run --config vitest.rls.config.ts"
   },
   "dependencies": {

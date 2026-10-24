@@ -26,6 +26,7 @@ export async function loadMembers(householdId: string): Promise<HouseholdMemberV
     .from("household_members")
     .select("display_name, role")
     .eq("household_id", householdId)
+    .eq("status", "active")
     .order("display_name", { ascending: true });
   if (error || !data) return null;
   const members: HouseholdMemberView[] = [];

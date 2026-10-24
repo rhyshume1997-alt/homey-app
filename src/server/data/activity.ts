@@ -1,6 +1,7 @@
 import "server-only";
 import { AuditEntrySchema } from "@/contracts/household";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import { parseBefore } from "@/components/activity/format";
 import type { ActivityRow } from "@/components/activity/format";
 
@@ -14,18 +15,19 @@ export async function loadActivity(
   limit: number,
   before: number | null,
 ): Promise<{ rows: ActivityRow[]; hasMore: boolean } | null> {
-  const supabase = await createUserClient();
-  if (!supabase) return null;
+  const sc = await scopedDb();
+  if (!sc) return null;
+  const { db: supabase, householdId } = sc;
   // before/after JSON is deliberately never selected.
   let q = supabase
     .from("audit_log")
-    .select("id, household_id, actor_user_id, action, entity_type, entity_id, summary, created_at")
+    .select("id, household_id, actor_user_id, action, entity_type, entity_id, summary, created_at").eq("household_id", householdId)
     .order("id", { ascending: false })
     .limit(limit + 1);
   if (before !== null) q = q.lt("id", before);
   const [{ data, error }, { data: members }] = await Promise.all([
     q,
-    supabase.from("household_members").select("user_id, display_name"),
+    supabase.from("household_members").select("user_id, display_name").eq("household_id", householdId).eq("status", "active"),
   ]);
   if (error || !data) return null;
   const names = new Map<string, string>();

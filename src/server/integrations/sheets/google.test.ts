@@ -3,7 +3,7 @@ import { clearSheetsCache, fetchCostsGrid } from "./google";
 import { loadCosts, type SnapshotStore } from "./load";
 import fixture from "../../../../tests/fixtures/costs-sheet.json";
 
-const SHEET = "1TestSheetIdAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const SHEET = "1D8UbD8WUOiW7h64yd7rwfaAEVFRPBx1tyBJtc7jxHhQ";
 const access = { accessToken: "user-tok", userId: "u1" };
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
@@ -22,8 +22,9 @@ function memoryStore(initial: Awaited<ReturnType<SnapshotStore["load"]>> = null)
   const save = vi.fn(async (_h: string, data: { sheet: unknown; flags: unknown[] }) => {
     row = { data, fetchedAt: 5000, fetchedBy: "Alex" };
   });
-  const store: SnapshotStore = { load: async () => row, save };
-  return { store, save };
+  const load = vi.fn(async (_h: string) => row);
+  const store: SnapshotStore = { load, save };
+  return { store, save, load };
 }
 const session = { householdId: "h1" };
 
@@ -96,7 +97,7 @@ describe("fetchCostsGrid", () => {
 describe("loadCosts", () => {
   it("connected: reads live, reconciles and saves a snapshot", async () => {
     const { store, save } = memoryStore();
-    const res = await loadCosts({ sheetId: SHEET, access, session, fetch: asFetch(mockFetch()), now: () => 1234, snapshots: store });
+    const res = await loadCosts({ sheetId: SHEET, access, session, primaryHouseholdId: "h1", fetch: asFetch(mockFetch()), now: () => 1234, snapshots: store });
     expect(res.status).toBe("ok");
     if (res.status === "ok") {
       expect(res.live).toBe(true);
@@ -110,7 +111,7 @@ describe("loadCosts", () => {
 
   it("does not save again for a cached read", async () => {
     const { store, save } = memoryStore();
-    const deps = { sheetId: SHEET, access, session, fetch: asFetch(mockFetch()), now: () => 10, snapshots: store };
+    const deps = { sheetId: SHEET, access, session, primaryHouseholdId: "h1", fetch: asFetch(mockFetch()), now: () => 10, snapshots: store };
     await loadCosts(deps);
     await loadCosts(deps);
     expect(save).toHaveBeenCalledTimes(1);
@@ -118,32 +119,50 @@ describe("loadCosts", () => {
 
   it("not connected: returns the household snapshot, not live", async () => {
     const live = memoryStore();
-    await loadCosts({ sheetId: SHEET, access, session, fetch: asFetch(mockFetch()), snapshots: live.store });
+    await loadCosts({ sheetId: SHEET, access, session, primaryHouseholdId: "h1", fetch: asFetch(mockFetch()), snapshots: live.store });
     const f = mockFetch();
-    const res = await loadCosts({ sheetId: SHEET, access: null, session, fetch: asFetch(f), snapshots: live.store });
+    const res = await loadCosts({ sheetId: SHEET, access: null, session, primaryHouseholdId: "h1", fetch: asFetch(f), snapshots: live.store });
     expect(f).not.toHaveBeenCalled();
     expect(res).toMatchObject({ status: "ok", live: false, fetchedAt: 5000, fetchedBy: "Alex" });
     if (res.status === "ok") expect(res.flags.length).toBeGreaterThan(0);
   });
 
   it("not connected and no snapshot: off; no session: off", async () => {
-    expect(await loadCosts({ sheetId: SHEET, access: null, session, snapshots: memoryStore().store })).toEqual({ status: "off" });
+    expect(await loadCosts({ sheetId: SHEET, access: null, session, primaryHouseholdId: "h1", snapshots: memoryStore().store })).toEqual({ status: "off" });
     expect(await loadCosts({ session: null })).toEqual({ status: "off" });
+  });
+
+  it("another household, or an unset PRIMARY_HOUSEHOLD_ID: off, nothing read, nothing saved or loaded", async () => {
+    for (const primaryHouseholdId of ["other-household", null]) {
+      const { store, save, load } = memoryStore();
+      const f = mockFetch();
+      const res = await loadCosts({ sheetId: SHEET, access, session, primaryHouseholdId, fetch: asFetch(f), snapshots: store });
+      expect(res).toEqual({ status: "off" });
+      expect(f).not.toHaveBeenCalled();
+      expect(save).not.toHaveBeenCalled();
+      expect(load).not.toHaveBeenCalled();
+    }
+  });
+
+  it("loads the snapshot for the session household", async () => {
+    const { store, load } = memoryStore();
+    await loadCosts({ sheetId: SHEET, access: null, session, primaryHouseholdId: "h1", snapshots: store });
+    expect(load).toHaveBeenCalledWith("h1");
   });
 
   it("a malformed snapshot is ignored", async () => {
     const { store } = memoryStore({ data: { sheet: 5 }, fetchedAt: 1, fetchedBy: null });
-    expect(await loadCosts({ sheetId: SHEET, access: null, session, snapshots: store })).toEqual({ status: "off" });
+    expect(await loadCosts({ sheetId: SHEET, access: null, session, primaryHouseholdId: "h1", snapshots: store })).toEqual({ status: "off" });
   });
 
   it("live failure falls back to the snapshot, or reports a fixed error", async () => {
     const f403 = vi.fn(async () => json({}, 403));
     const withSnap = memoryStore();
-    await loadCosts({ sheetId: SHEET, access, session, fetch: asFetch(mockFetch()), snapshots: withSnap.store });
+    await loadCosts({ sheetId: SHEET, access, session, primaryHouseholdId: "h1", fetch: asFetch(mockFetch()), snapshots: withSnap.store });
     clearSheetsCache();
-    expect(await loadCosts({ sheetId: SHEET, access, session, fetch: asFetch(f403), snapshots: withSnap.store })).toMatchObject({ status: "ok", live: false });
+    expect(await loadCosts({ sheetId: SHEET, access, session, primaryHouseholdId: "h1", fetch: asFetch(f403), snapshots: withSnap.store })).toMatchObject({ status: "ok", live: false });
     clearSheetsCache();
-    expect(await loadCosts({ sheetId: SHEET, access, session, fetch: asFetch(f403), snapshots: memoryStore().store })).toEqual({
+    expect(await loadCosts({ sheetId: SHEET, access, session, primaryHouseholdId: "h1", fetch: asFetch(f403), snapshots: memoryStore().store })).toEqual({
       status: "error",
       message: "Google Sheets request failed.",
     });

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import {
   DoneInputSchema, MaintenanceInputSchema, MaintenanceItemSchema, MaintenanceLogSchema, SOON_DAYS, SUGGESTIONS,
@@ -54,20 +55,22 @@ export function parseSuggestionIndex(fd: FormData): number | null {
 }
 
 export async function listMaintenance(): Promise<Result<MaintenanceItem[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("maintenance_items").select("*").limit(1000);
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("maintenance_items").select("*").eq("household_id", householdId).limit(1000);
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(MaintenanceItemSchema).safeParse(data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: MSG.load };
 }
 
 export async function listMaintenanceLog(): Promise<Result<MaintenanceLog[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("maintenance_log")
-    .select("id, item_id, done_on, notes, cost_gbp, created_at")
+    .select("id, item_id, done_on, notes, cost_gbp, created_at").eq("household_id", householdId)
     .order("done_on", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(2000);

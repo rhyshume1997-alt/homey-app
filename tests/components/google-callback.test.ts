@@ -44,7 +44,7 @@ describe("Google connect callback (review S1/S3)", () => {
     expect(res.headers.get("location")).toContain("/settings/google?connected=1");
     expect(m.setSession).toHaveBeenCalledWith({ access_token: "at", refresh_token: "rt" });
     expect(JSON.stringify(m.setSession.mock.calls)).not.toContain("prt-secret");
-    expect(m.rpc).toHaveBeenCalledWith("store_my_google_token", expect.objectContaining({ p_scopes: expect.any(String) }));
+    expect(m.rpc).toHaveBeenCalledWith("store_my_google_token", expect.objectContaining({ p_household: "h", p_scopes: expect.any(String) }));
     expect(JSON.stringify(m.rpc.mock.calls)).not.toContain("prt-secret");
     expect(m.signOut).not.toHaveBeenCalled();
   });

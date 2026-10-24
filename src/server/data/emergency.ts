@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { EmergencyInputSchema, EmergencyItemSchema, type EmergencyInput, type EmergencyItem } from "@/contracts/emergency";
 
@@ -46,11 +47,12 @@ async function run(fn: (db: Db) => PromiseLike<{ error: unknown }>): Promise<Res
 }
 
 export async function listEmergencyItems(): Promise<Result<EmergencyItem[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("emergency_items")
-    .select(SELECT)
+    .select(SELECT).eq("household_id", householdId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   const parsed = z.array(EmergencyItemSchema).safeParse(data);
