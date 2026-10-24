@@ -12,6 +12,9 @@ export const MSG = {
   denied: "You don't have permission to do that.",
   invalid: "Check the details and try again.",
   limit: "You've reached the limit of 3 households you can own.",
+  paused: "New households are paused for now. Please try again later.",
+  createRate: "Too many new households in a day. Please try again tomorrow.",
+  inviteRate: "You've sent a lot of invites today. Please try again tomorrow.",
   inviteBad: "This invite link isn't valid any more. Ask the household owner for a new one.",
 } as const;
 
@@ -45,8 +48,10 @@ export async function createHousehold(input: unknown): Promise<Result<{ househol
   if (!db) return { ok: false, error: MSG.unavailable };
   const { data, error } = await db.rpc("create_household", { p_name: p.data.name, p_display_name: p.data.displayName });
   if (error) {
-    const limit = error.code === "42501" && /household limit reached/i.test(error.message ?? "");
-    return { ok: false, error: limit ? MSG.limit : rpcError(error) };
+    const msg = error.code === "42501" ? (error.message ?? "") : "";
+    if (/household creation is paused/i.test(msg)) return { ok: false, error: MSG.paused };
+    if (/rate limit reached/i.test(msg)) return { ok: false, error: MSG.createRate };
+    return { ok: false, error: /household limit reached/i.test(msg) ? MSG.limit : rpcError(error) };
   }
   const id = uuid.safeParse(data);
   return id.success ? { ok: true, data: { householdId: id.data } } : { ok: false, error: MSG.unavailable };
@@ -60,6 +65,7 @@ export async function createInvite(input: unknown): Promise<Result<{ token: stri
   if (!db) return { ok: false, error: MSG.unavailable };
   const { data, error } = await db.rpc("create_invite", { p_household: p.data.household, p_email: p.data.email });
   if (error) {
+    if (error.code === "42501" && /rate limit reached/i.test(error.message ?? "")) return { ok: false, error: MSG.inviteRate };
     return { ok: false, error: rpcError(error, "Only a household owner can invite people.", "That person is already a member, or the email isn't valid.") };
   }
   if (!isInviteToken(data)) return { ok: false, error: MSG.unavailable };

@@ -49,6 +49,13 @@ describe("createHousehold", () => {
     const r = await createHousehold({ name: "Home", displayName: "Me" });
     expect(r).toEqual({ ok: false, error: "You don't have permission to do that." });
   });
+  it.each([
+    ["household creation is paused", "New households are paused for now. Please try again later."],
+    ["rate limit reached", "Too many new households in a day. Please try again tomorrow."],
+  ])("maps %j (42501) to a friendly message", async (message, expected) => {
+    m.rpc.mockResolvedValue({ data: null, error: { code: "42501", message } });
+    expect(await createHousehold({ name: "Home", displayName: "Me" })).toEqual({ ok: false, error: expected });
+  });
   it("returns the new household id", async () => {
     m.rpc.mockResolvedValue({ data: H, error: null });
     expect(await createHousehold({ name: " Home ", displayName: "Me" })).toEqual({ ok: true, data: { householdId: H } });
@@ -72,6 +79,13 @@ describe("createInvite", () => {
     const r = await createInvite({ household: H, email: "a@b.co" });
     expect(r.ok).toBe(false);
     expect(JSON.stringify(r)).not.toMatch(/row-level/);
+  });
+  it("maps the invite rate limit to a friendly message", async () => {
+    m.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "rate limit reached" } });
+    expect(await createInvite({ household: H, email: "a@b.co" })).toEqual({
+      ok: false,
+      error: "You've sent a lot of invites today. Please try again tomorrow.",
+    });
   });
   it("rejects a malformed token coming back", async () => {
     m.rpc.mockResolvedValue({ data: "short", error: null });

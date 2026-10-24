@@ -29,6 +29,15 @@
 -- Known residual: a task may still name a removed person as assignee (guard_task only checks on change);
 -- that exposes nothing because RLS hides the people list from the removed person.
 
+-- OPERATOR CONTROLS (run in the Supabase SQL editor; no deploy needed, no client can touch them):
+--   Pause new household creation:   update private.app_settings set household_creation_open = false, updated_at = now();
+--   Re-open it:                     update private.app_settings set household_creation_open = true,  updated_at = now();
+--   Usage monitoring (last 30 days): select * from private.usage_daily order by day desc limit 30;
+-- Rate limits (server side, counted from data, 42501 'rate limit reached'): create_household max 3 per user
+-- per rolling 24 h (audit_log 'household.created' by actor, so leaving or removing does not reset it);
+-- create_invite max 20 per household per rolling 24 h. These are in addition to the 3-owned cap.
+-- A paused switch raises 42501 'household creation is paused'.
+
 -- 1. Membership status -------------------------------------------------------------------------
 alter table public.household_members
   add column status text not null default 'active' check (status in ('active', 'removed')),
@@ -83,6 +92,28 @@ grant select (id, household_id, email, role, created_by, created_at, expires_at,
 create policy household_invites_select on public.household_invites for select to authenticated
   using (private.is_household_owner(household_id));
 
+-- 3b. Operator kill switch + usage view (no client grants) -------------------------------------------
+create table private.app_settings (
+  id boolean primary key default true check (id),
+  household_creation_open boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+insert into private.app_settings (id) values (true);
+alter table private.app_settings enable row level security;
+alter table private.app_settings force row level security;
+revoke all on private.app_settings from public, anon, authenticated;
+
+create view private.usage_daily as
+select (a.created_at at time zone 'UTC')::date as day,
+       count(*) filter (where a.action = 'household.created')::integer as households_created,
+       count(*) filter (where a.action = 'invite.created')::integer as invites_created,
+       count(*) filter (where a.action = 'invite.accepted')::integer as invites_accepted,
+       count(*) filter (where a.action = 'member.removed')::integer as members_removed
+from public.audit_log a
+where a.action in ('household.created', 'invite.created', 'invite.accepted', 'member.removed')
+group by 1;
+revoke all on private.usage_daily from public, anon, authenticated;
+
 -- 4. RPCs ----------------------------------------------------------------------------------------
 create function private.caller_email() returns text
 language sql stable
@@ -107,11 +138,20 @@ begin
   if length(v_name) not between 1 and 100 then raise exception 'invalid household name' using errcode = '22023'; end if;
   if length(v_dn) not between 1 and 50 then raise exception 'invalid display name' using errcode = '22023'; end if;
 
-  -- Abuse guard: serialise per user, then cap owned households.
+  if not (select household_creation_open from private.app_settings where id) then
+    raise exception 'household creation is paused' using errcode = '42501';
+  end if;
+
+  -- Abuse guard: serialise per user, then cap owned households and creations per rolling 24 h.
   perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
   if (select count(*) from public.household_members m
       where m.user_id = v_uid and m.role = 'owner' and m.status = 'active') >= 3 then
     raise exception 'household limit reached' using errcode = '42501';
+  end if;
+  if (select count(*) from public.audit_log a
+      where a.actor_user_id = v_uid and a.action = 'household.created'
+        and a.created_at > now() - interval '24 hours') >= 3 then
+    raise exception 'rate limit reached' using errcode = '42501';
   end if;
 
   insert into public.households (name) values (v_name) returning id into v_id;
@@ -145,6 +185,13 @@ begin
     where m.household_id = p_household and m.status = 'active' and lower(u.email) = v_email
   ) then
     raise exception 'already a member' using errcode = '22023';
+  end if;
+
+  -- Serialise per household, then cap invites per rolling 24 h (revoked ones still count).
+  perform pg_advisory_xact_lock(hashtextextended('invite:' || p_household::text, 0));
+  if (select count(*) from public.household_invites i
+      where i.household_id = p_household and i.created_at > now() - interval '24 hours') >= 20 then
+    raise exception 'rate limit reached' using errcode = '42501';
   end if;
 
   update public.household_invites

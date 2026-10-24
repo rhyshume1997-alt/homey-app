@@ -65,6 +65,7 @@ export async function isGmailConnected(): Promise<boolean> {
 export async function syncNow(s: HouseholdSession): Promise<Result<number>> {
   const r = await syncMyGmail(s.displayName, s.householdId);
   if (r.status === "ok") return { ok: true, data: r.count };
+  if (r.status === "other_household") return { ok: true, data: 0 };
   if (r.status === "not_connected") return { ok: false, error: "Connect Google first (Settings, Google connection)." };
   return { ok: false, error: r.message };
 }

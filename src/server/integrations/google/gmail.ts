@@ -191,6 +191,8 @@ export async function collectThreadRecords(d: GmailDeps, threadKey: Buffer): Pro
 export type SyncResult =
   | { status: "ok"; count: number }
   | { status: "not_connected" }
+  /** Google was connected in another household: a quiet no-op here, never an error. */
+  | { status: "other_household" }
   | { status: "error"; message: string };
 
 export interface SyncDeps {
@@ -207,6 +209,12 @@ async function defaultRpc(fn: string, args?: Record<string, unknown>) {
   return db.rpc(fn, args);
 }
 
+/** The RPC refuses to sync into a household other than the one where Google was connected. */
+function isOtherHousehold(err: unknown): boolean {
+  const e = err as { code?: string; message?: string } | null;
+  return !!e && e.code === "42501" && /google connected to another household/i.test(e.message ?? "");
+}
+
 /** Syncs the current user's own Gmail metadata into their household (RPC enforces membership + name). */
 export async function syncMyGmail(displayName: string, householdId: string, deps: SyncDeps = {}): Promise<SyncResult> {
   const keyB64 = deps.keyB64 ?? getServerEnv().GOOGLE_TOKEN_ENCRYPTION_KEY;
@@ -219,6 +227,7 @@ export async function syncMyGmail(displayName: string, householdId: string, deps
       deriveThreadKey(keyB64),
     );
     const r = await (deps.rpc ?? defaultRpc)("sync_my_email_threads", { p_household: householdId, p_member: displayName, p_threads: records });
+    if (isOtherHousehold(r.error)) return { status: "other_household" };
     if (r.error) return { status: "error", message: "Could not save the synced threads." };
     return { status: "ok", count: records.length };
   } catch (e) {

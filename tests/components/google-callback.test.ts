@@ -48,6 +48,15 @@ describe("Google connect callback (review S1/S3)", () => {
     expect(JSON.stringify(m.rpc.mock.calls)).not.toContain("prt-secret");
     expect(m.signOut).not.toHaveBeenCalled();
   });
+  it("stores the token for the CURRENT session household only", async () => {
+    const B = "22222222-2222-4222-8222-222222222222";
+    m.getSession.mockResolvedValue({ ...U, householdId: B });
+    m.exchange.mockResolvedValue({ data: { session: SESSION }, error: null });
+    await GET(req("?code=abc"));
+    const stores = m.rpc.mock.calls.filter((c) => c[0] === "store_my_google_token");
+    expect(stores).toHaveLength(1);
+    expect(stores[0]![1].p_household).toBe(B);
+  });
   it("a forged or failed code does not sign the user out anywhere", async () => {
     m.exchange.mockResolvedValue({ data: { session: null }, error: { message: "bad" } });
     const res = await GET(req("?code=forged"));
