@@ -15,6 +15,7 @@ import { getSuppliesCardData } from "./shopping";
 import { listNotifications } from "./notifications";
 import { getAwaitingSummary } from "./replies";
 import { getEnergy } from "./energy";
+import { listMembers } from "./tasks";
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 
@@ -27,10 +28,10 @@ function ok<T>(r: PromiseSettledResult<T>): T | null {
   return r.status === "fulfilled" ? r.value : null;
 }
 
-type Core = Pick<DashboardData, "tasks" | "snags" | "openSnagCount" | "activity" | "renewals" | "expenses" | "suggestionInput">;
+type Core = Pick<DashboardData, "tasks" | "chores" | "snags" | "openSnagCount" | "activity" | "renewals" | "expenses" | "suggestionInput">;
 
 const EMPTY_CORE: Core = {
-  tasks: null, snags: null, openSnagCount: null, activity: null, renewals: null, expenses: null,
+  tasks: null, chores: null, snags: null, openSnagCount: null, activity: null, renewals: null, expenses: null,
   suggestionInput: { tasks: null, snags: null, records: null },
 };
 
@@ -71,6 +72,7 @@ async function loadCore(today: string): Promise<Core> {
   }
 
   let tasks: DashboardData["tasks"] = null;
+  let chores: DashboardData["chores"] = null;
   let allTasks: Task[] | null = null;
   if (tr && !tr.error) {
     allTasks = (tr.data ?? []).flatMap((r) => {
@@ -81,6 +83,12 @@ async function loadCore(today: string): Promise<Core> {
       .flatMap((t) => (t.due_date && t.due_date <= today ? [{ ...t, due_date: t.due_date }] : []))
       .slice(0, 5)
       .map((t) => ({ id: t.id, title: t.title, dueDate: t.due_date, overdue: t.due_date < today }));
+  }
+
+  if (allTasks) {
+    chores = allTasks
+      .flatMap((t) => (t.due_date && t.due_date <= today ? [{ id: t.id, title: t.title, dueDate: t.due_date, overdue: t.due_date < today, assigneeId: t.assignee_user_id }] : []))
+      .slice(0, 30);
   }
 
   let snags: DashboardData["snags"] = null;
@@ -100,7 +108,7 @@ async function loadCore(today: string): Promise<Core> {
   }
 
   return {
-    tasks, snags, openSnagCount, activity: act ? act.rows : null, renewals, expenses,
+    tasks, chores, snags, openSnagCount, activity: act ? act.rows : null, renewals, expenses,
     suggestionInput: { tasks: allTasks, snags: allSnags, records },
   };
 }
@@ -111,7 +119,7 @@ async function loadCore(today: string): Promise<Core> {
  */
 export async function getDashboardData(now = new Date(), userId?: string): Promise<DashboardData> {
   const today = todayInLondon(now);
-  const [core, bins, notifications, awaiting, supplies, maintenance, energy, documents] = await Promise.allSettled([
+  const [core, bins, notifications, awaiting, supplies, maintenance, energy, documents, members] = await Promise.allSettled([
     loadCore(today),
     loadBins(now),
     userId ? listNotifications(userId, 50) : Promise.resolve(null),
@@ -120,6 +128,7 @@ export async function getDashboardData(now = new Date(), userId?: string): Promi
     getMaintenanceCardData(today),
     getEnergy(),
     documentsSummary(),
+    listMembers(),
   ]);
   const b = ok(bins);
   const n = ok(notifications);
@@ -134,5 +143,6 @@ export async function getDashboardData(now = new Date(), userId?: string): Promi
     maintenance: ok(maintenance),
     energy: e && e.ok ? e.data : null,
     documents: ok(documents),
+    members: ok(members),
   };
 }

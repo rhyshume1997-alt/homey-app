@@ -10,7 +10,7 @@ const LINK = "min-h-[var(--touch-target)] inline-flex items-center rounded-md bo
 
 function MealItem({ meal, actions, supplies }: { meal: MealWithIngredients; actions: MealActions; supplies: SupplyRef[] }) {
   return (
-    <li data-testid="meal-row" className="rounded-md bg-surface-muted px-3 py-3">
+    <li data-testid="meal-row" className="min-w-0 rounded-md bg-surface-muted px-3 py-3 [overflow-wrap:anywhere]">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">{SLOT_LABEL[meal.slot]}</p>
       <p className="font-medium">{meal.title}</p>
       {meal.notes && <p className="text-sm text-muted">{meal.notes}</p>}
@@ -69,7 +69,7 @@ export function MealsWeek({
         {days.map((d, i) => {
           const list = meals.filter((m) => m.planned_on === d);
           return (
-            <li key={d} data-testid="meal-day" className="rounded-lg border border-border bg-surface p-3">
+            <li key={d} data-testid="meal-day" className="min-w-0 rounded-lg border border-border bg-surface p-3 [overflow-wrap:anywhere]">
               <h2 className="text-base font-semibold">
                 {DAY_NAMES[i]} <span className="font-normal text-muted">{formatDate(d, datePrefs)}</span>
               </h2>

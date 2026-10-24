@@ -16,6 +16,8 @@ export type TaskActions = {
   complete: FormAction;
   reopen: FormAction;
   remove: FormAction;
+  /** Pings the assignee; omit to hide the button. */
+  nudge?: FormAction;
 };
 
 const RECURRENCE: Record<Task["recurrence"], string> = {
@@ -30,6 +32,7 @@ function TaskRow({
   datePrefs,
   today,
   rooms,
+  viewerId,
 }: {
   task: Task;
   members: readonly MemberOption[];
@@ -37,6 +40,7 @@ function TaskRow({
   datePrefs?: DatePrefs;
   today: string;
   rooms?: readonly RoomOption[];
+  viewerId?: string;
 }) {
   const done = task.status === "done";
   const assignee = task.assignee_user_id
@@ -58,11 +62,17 @@ function TaskRow({
           <p className="text-sm text-muted">{meta.join(" · ")}</p>
           {task.notes && <p className="mt-1 whitespace-pre-line text-sm">{task.notes}</p>}
         </div>
+        <div className="flex flex-wrap gap-2">
+        {actions.nudge && !done && task.assignee_user_id && task.assignee_user_id !== viewerId
+          && members.some((m) => m.user_id === task.assignee_user_id) ? (
+          <RowAction action={actions.nudge} id={task.id} label="Nudge" />
+        ) : null}
         <RowAction
           action={done ? actions.reopen : actions.complete}
           id={task.id}
           label={done ? "Reopen" : "Mark done"}
         />
+        </div>
       </div>
       <LazyDetails className="mt-2" summaryClassName={`${BTN_SECONDARY} inline-flex cursor-pointer items-center`} summary="Edit or delete">
         <div className="mt-3 flex flex-col gap-3">
@@ -79,25 +89,26 @@ function TaskRow({
 }
 
 function Group({
-  title, tasks, members, actions, datePrefs, today, rooms,
-}: { title: string; tasks: Task[]; members: readonly MemberOption[]; actions: TaskActions; datePrefs?: DatePrefs; today: string; rooms?: readonly RoomOption[] }) {
+  title, tasks, members, actions, datePrefs, today, rooms, viewerId,
+}: { viewerId?: string; title: string; tasks: Task[]; members: readonly MemberOption[]; actions: TaskActions; datePrefs?: DatePrefs; today: string; rooms?: readonly RoomOption[] }) {
   if (tasks.length === 0) return null;
   return (
     <section aria-label={title} data-testid="task-group" className="rounded-lg border border-border bg-surface p-4">
       <h2 className="text-base font-semibold">{title} <span className="font-normal text-muted">({tasks.length})</span></h2>
       <ul className="mt-3 flex flex-col gap-2">
-        {tasks.map((t) => <TaskRow key={t.id} task={t} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} />)}
+        {tasks.map((t) => <TaskRow key={t.id} task={t} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} viewerId={viewerId} />)}
       </ul>
     </section>
   );
 }
 
 export function TaskList({
-  tasks, members, today, actions, datePrefs, rooms,
+  tasks, members, today, actions, datePrefs, rooms, viewerId,
 }: {
   tasks: readonly Task[]; members: readonly MemberOption[]; today: string; actions: TaskActions; datePrefs?: DatePrefs;
   /** Rooms for the edit forms' picker. Omit and the existing room link is kept unchanged. */
   rooms?: readonly RoomOption[];
+  viewerId?: string;
 }) {
   const g = groupTasks(tasks, today);
   const open = [...g.overdue, ...g.today, ...g.upcoming, ...g.noDate];
@@ -111,17 +122,17 @@ export function TaskList({
         </p>
       )}
       {openCount > 0 && <LightSummary lights={lights} />}
-      <Group title="Overdue" tasks={g.overdue} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} />
-      <Group title="Today" tasks={g.today} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} />
-      <Group title="Upcoming" tasks={g.upcoming} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} />
-      <Group title="No date" tasks={g.noDate} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} />
+      <Group title="Overdue" tasks={g.overdue} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} viewerId={viewerId} />
+      <Group title="Today" tasks={g.today} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} viewerId={viewerId} />
+      <Group title="Upcoming" tasks={g.upcoming} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} viewerId={viewerId} />
+      <Group title="No date" tasks={g.noDate} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} viewerId={viewerId} />
       {g.done.length > 0 && (
         <details data-testid="done-tasks" className="rounded-lg border border-border bg-surface p-4">
           <summary className="min-h-[var(--touch-target)] cursor-pointer text-base font-semibold">
             Done ({g.done.length})
           </summary>
           <ul className="mt-3 flex flex-col gap-2">
-            {g.done.map((t) => <TaskRow key={t.id} task={t} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} />)}
+            {g.done.map((t) => <TaskRow key={t.id} task={t} members={members} actions={actions} datePrefs={datePrefs} today={today} rooms={rooms} viewerId={viewerId} />)}
           </ul>
         </details>
       )}

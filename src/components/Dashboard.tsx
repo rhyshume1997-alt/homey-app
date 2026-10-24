@@ -15,6 +15,8 @@ import type { EnergyData } from "@/components/energy/group";
 import { AiRecommendationsCard } from "@/components/home/AiRecommendationsCard";
 import { AwaitingRepliesCard, type AwaitingSummaryData } from "@/components/home/AwaitingRepliesCard";
 import { BinsCard } from "@/components/home/BinsCard";
+import { ChoresCard, type ChoreActions, type ChoreItem } from "@/components/home/ChoresCard";
+import type { MemberOption } from "@/components/tasks/types";
 import { CardTitle } from "@/components/home/CardTitle";
 import { GlassIcon, type IconName, type Tint } from "@/components/ui/GlassIcon";
 import { LightSummary, StatusPill } from "@/components/ui/StatusPill";
@@ -37,6 +39,10 @@ export interface DashboardData {
   renewals: DashboardRenewal[] | null;
   expenses: DashboardExpenses | null;
   tasks: DashboardTask[] | null;
+  /** Open tasks due today or overdue, with assignee. Null when tasks could not be loaded. */
+  chores: ChoreItem[] | null;
+  /** Active members, for the chore groups and the add form. Null when not loaded. */
+  members: MemberOption[] | null;
   snags: DashboardSnag[] | null;
   openSnagCount: number | null;
   activity: ActivityRow[] | null;
@@ -145,6 +151,8 @@ export function Dashboard({
   contributions,
   showSnags = true,
   hub,
+  viewerId,
+  choreActions,
 }: {
   displayName: string;
   data: DashboardData;
@@ -156,6 +164,9 @@ export function Dashboard({
   showSnags?: boolean;
   /** The tappable area cards (what used to be under More), shown first under the greeting. */
   hub?: ReactNode;
+  viewerId?: string;
+  /** Server actions for the Chores card; without them the card is read only. */
+  choreActions?: ChoreActions;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -170,6 +181,7 @@ export function Dashboard({
       <TodayCard data={data} datePrefs={datePrefs} />
       <QuickLinks />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
+        <ChoresCard chores={data.chores} members={data.members} viewerId={viewerId} today={data.today} datePrefs={datePrefs} actions={choreActions} />
         <Card title="Tasks due today" icon="tasks" tint="blue" href="/tasks" hrefLabel="All tasks">
           {data.tasks === null ? <Unavailable /> : data.tasks.length === 0 ? <Note>Nothing due today or overdue.</Note> : (
             <List>

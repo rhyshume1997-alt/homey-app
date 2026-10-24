@@ -1,5 +1,5 @@
 export type NotificationKind =
-  | "renewal_due" | "task_due" | "task_overdue" | "bin_tomorrow" | "snag_stale" | "document_expiring" | "system";
+  | "renewal_due" | "task_due" | "task_overdue" | "bin_tomorrow" | "snag_stale" | "document_expiring" | "system" | "chore_nudge";
 
 export interface NotificationItem {
   id: string;

@@ -111,18 +111,18 @@ test.describe("signed in", () => {
 
   test("bottom nav is in thumb reach and every item is a big target", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
-    const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /tasks/i }) }).last();
+    const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /chores/i }) }).last();
     const box = (await nav.boundingBox())!;
     const vp = page.viewportSize()!;
     expect(box.y + box.height).toBeGreaterThan(vp.height - 2);
     expect(box.y).toBeGreaterThan(vp.height * 0.75);
-    for (const label of ["Home", "Tasks", "Snags", "Money", "Settings"]) {
+    for (const label of ["Home", "Chores", "Snags", "Money", "Settings"]) {
       const b = (await nav.getByRole("link", { name: label }).boundingBox())!;
       expect(b.height).toBeGreaterThanOrEqual(44);
       expect(b.width).toBeGreaterThanOrEqual(44);
     }
     // Navigating with a tap works.
-    await nav.getByRole("link", { name: "Tasks" }).tap();
+    await nav.getByRole("link", { name: "Chores" }).tap();
     await expect(page).toHaveURL(/\/tasks$/);
   });
 
@@ -183,8 +183,8 @@ test.describe("signed in", () => {
   test("Back button returns to the previous screen and is a big target", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
     await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
-    const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /tasks/i }) }).last();
-    await nav.getByRole("link", { name: "Tasks" }).tap();
+    const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /chores/i }) }).last();
+    await nav.getByRole("link", { name: "Chores" }).tap();
     await expect(page).toHaveURL(/\/tasks$/);
     const back = page.getByRole("button", { name: "Back" });
     const box = (await back.boundingBox())!;
@@ -230,4 +230,47 @@ test.describe("Add to Home Screen", () => {
     await expect(page.locator('meta[name="mobile-web-app-capable"], meta[name="apple-mobile-web-app-capable"]').first()).toHaveAttribute("content", "yes");
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", /width=device-width.*viewport-fit=cover/);
   });
+});
+
+test.describe("meals do not overlap", () => {
+  test.beforeEach(async ({ page }) => signIn(page));
+
+  for (const path of ["/meals", "/meals/ingredients"]) {
+    test(`${path}: rows and cards never intersect or exceed the screen`, async ({ page }) => {
+      await page.goto(path, { waitUntil: "networkidle" });
+      await expect(page.getByText("Could not load this right now.")).toHaveCount(0);
+      const sel = path === "/meals" ? '[data-testid="meal-day"], [data-testid="meal-row"]' : '[data-testid="needed-row"]';
+      const found = await page.evaluate((s) => {
+        const vw = document.documentElement.clientWidth;
+        const boxes = [...document.querySelectorAll<HTMLElement>(s)]
+          .filter((el) => el.offsetParent !== null)
+          .map((el) => ({ el, r: el.getBoundingClientRect(), label: (el.textContent ?? "").trim().slice(0, 30) }));
+        const problems: string[] = [];
+        for (const a of boxes) {
+          if (a.r.right > vw + 0.5 || a.r.left < -0.5) problems.push(`wider than screen: ${a.label} ${Math.round(a.r.left)}..${Math.round(a.r.right)}`);
+        }
+        // Siblings must not intersect (a day card legitimately contains its own meal rows).
+        for (let i = 0; i < boxes.length; i++) {
+          for (let j = i + 1; j < boxes.length; j++) {
+            const a = boxes[i], b = boxes[j];
+            if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+            const x = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+            const y = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+            if (x > 1 && y > 1) problems.push(`overlap: "${a.label}" and "${b.label}"`);
+          }
+        }
+        // Text or pills spilling out of their own card.
+        for (const { el, r } of boxes) {
+          for (const c of el.querySelectorAll<HTMLElement>("p, span, h2, summary, li")) {
+            const cr = c.getBoundingClientRect();
+            if (cr.width && (cr.right > r.right + 1 || cr.left < r.left - 1)) problems.push(`spills out of its card: ${(c.textContent ?? "").trim().slice(0, 30)}`);
+          }
+        }
+        return { count: boxes.length, problems };
+      }, sel);
+      expect(found.count, "made-up meals should render").toBeGreaterThan(3);
+      expect(found.problems).toEqual([]);
+      await noSidewaysScroll(page);
+    });
+  }
 });

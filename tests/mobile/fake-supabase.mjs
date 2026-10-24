@@ -141,16 +141,44 @@ const meter_readings = [
   { id: uid(), household_id: H, fuel: "electricity", read_on: ymd(-30), value: 12000, unit: "kWh", source: "manual", source_message_hash: null, note: null, created_by: RHYS, created_at: iso(500), updated_at: iso(500) },
   { id: uid(), household_id: H, fuel: "electricity", read_on: ymd(-1), value: 12240, unit: "kWh", source: "manual", source_message_hash: null, note: null, created_by: RHYS, created_at: iso(10), updated_at: iso(10) },
 ];
+const MEAL_ID = "0000d18a-0000-4000-8000-000000000003";
+// The app reads the real clock for "this week", so plan meals relative to the real Monday (day 0 = Monday).
+const realMonday = new Date(Date.now() - ((new Date().getUTCDay() + 6) % 7) * 86400000);
+const mealDay = (d) => new Date(realMonday.getTime() + d * 86400000).toISOString().slice(0, 10);
+const mealRow = (id, day, slot, title, notes = null) => ({ id, household_id: H, planned_on: mealDay(day), slot, title, notes, created_by: RHYS, created_at: iso(100), updated_at: iso(100) });
+// Dates are relative to the fake clock; several days and both slots, long titles, long ingredient names.
 const meals = [
-  { id: "0000d18a-0000-4000-8000-000000000003", household_id: H, planned_on: ymd(0), slot: "dinner", title: "Veg chilli (synthetic)", notes: null, created_by: RHYS, created_at: iso(100), updated_at: iso(100) },
+  { ...mealRow(MEAL_ID, 0, "dinner", "Veg chilli (synthetic)") },
+  mealRow(uid(), 0, "lunch", "Slow roasted shoulder of lamb with rosemary, garlic, anchovies and a very long side of seasonal roasted vegetables (synthetic)", "Start the marinade the night before and remember to take it out of the fridge an hour ahead of cooking."),
+  mealRow(uid(), 1, "dinner", "Supercalifragilisticexpialidocious_pasta_bake_without_any_spaces_at_all_synthetic"),
+  mealRow(uid(), 2, "lunch", "Soup"),
+  mealRow(uid(), 2, "dinner", "Fish pie"),
+  mealRow(uid(), 4, "dinner", "Homemade pizza night with all the toppings (synthetic)"),
+  mealRow(uid(), 6, "lunch", "Sunday roast"),
 ];
+const ing = (meal_id, name, quantity, price) => ({ id: uid(), household_id: H, meal_id, name, quantity, unit_price_estimate: price, supply_id: null, created_by: RHYS, created_at: iso(100), updated_at: iso(100) });
 const meal_ingredients = [
-  { id: uid(), household_id: H, meal_id: "0000d18a-0000-4000-8000-000000000003", name: "Kidney beans", quantity: "2 tins", unit_price_estimate: 0.8, supply_id: null, created_by: RHYS, created_at: iso(100), updated_at: iso(100) },
+  ing(MEAL_ID, "Kidney beans", "2 tins", 0.8),
+  ing(MEAL_ID, "Chopped tomatoes", "3 tins", 0.65),
+  ing(meals[1].id, "Extra virgin cold pressed Greek olive oil from a single estate (synthetic)", "500ml bottle, the big one", 7.5),
+  ing(meals[1].id, "Rosemary", "1 bunch", null),
+  ing(meals[2].id, "Wholewheat_penne_pasta_quills_no_spaces_in_this_name_at_all", "500g", 1.2),
+  ing(meals[2].id, "Kidney beans", "1 tin", 0.8),
+  ing(meals[4].id, "Smoked haddock", "400g", 4.5),
+  ing(meals[5].id, "Strong white bread flour", "1kg", 1.4),
 ];
+const bin_schedules = [
+  { id: "0000b1d5-0000-4000-8000-000000000001", household_id: H, bin_name: "Recycling (made up)", colour: "blue", first_date: ymd(2), every_weeks: 2, created_by: RHYS, created_at: iso(100), updated_at: iso(100) },
+  { id: "0000b1d5-0000-4000-8000-000000000002", household_id: H, bin_name: "Food waste (made up)", colour: "brown", first_date: ymd(4), every_weeks: 1, created_by: RHYS, created_at: iso(100), updated_at: iso(100) },
+];
+const bin_settings = [
+  { household_id: H, council_url: "https://www.example.invalid/a-very-long-made-up-council-bin-collection-page/with/a/long/path?postcode=XX1", updated_at: iso(100), updated_by: RHYS },
+];
+for (const m of meals) m.meal_ingredients = meal_ingredients.filter((i) => i.meal_id === m.id);
 const tables = {
   rooms, wishlist_items, checklist_items, emergency_items, wifi_networks: [], household_events, appliances, meter_readings,
   meals, meal_ingredients, kudos: [], ai_digests: [],
-  household_records, household_members: members, household_invites: [], tasks, snags, audit_log, bin_collections, documents, shopping_items,
+  household_records, household_members: members, household_invites: [], tasks, snags, audit_log, bin_collections, bin_schedules, bin_settings, documents, shopping_items,
   supplies, maintenance_items, maintenance_log, notifications, notification_reads: [], email_threads, ai_usage,
   ai_proposals, push_subscriptions: [], budget_snapshots: [],
 };
@@ -187,7 +215,16 @@ function applyQuery(rows, params) {
   const sel = params.get("select");
   if (sel && sel !== "*") {
     // "notification_reads(user_id)" embeds are already stored on the row under the relation name.
-    const cols = sel.split(",").map((s) => s.trim().replace(/\(.*\)$/, ""));
+    // Split on top-level commas only, so embeds like meal_ingredients(a,b) stay one column.
+    const cols = [];
+    let depth = 0, cur = "";
+    for (const ch of sel) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) { cols.push(cur); cur = ""; } else cur += ch;
+    }
+    cols.push(cur);
+    for (let i = 0; i < cols.length; i++) cols[i] = cols[i].trim().replace(/\(.*\)$/, "");
     out = out.map((r) => Object.fromEntries(cols.map((c) => [c, r[c]])));
   }
   return out;

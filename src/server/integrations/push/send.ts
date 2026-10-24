@@ -17,7 +17,7 @@ export type SendResult = { sent: number; removed: number; failed: number };
 
 type Row = { id: string; endpoint: string; p256dh: string; auth: string };
 
-async function deliver(db: SupabaseClient, rows: Row[], payload: PushPayload, cfg: PushConfig): Promise<SendResult> {
+async function deliver(db: SupabaseClient, rows: Row[], payload: PushPayload, cfg: PushConfig, record = true): Promise<SendResult> {
   const body = JSON.stringify(payload);
   const out = { sent: 0, removed: 0, failed: 0 };
   for (const r of rows) {
@@ -27,21 +27,33 @@ async function deliver(db: SupabaseClient, rows: Row[], payload: PushPayload, cf
         TTL: 3600,
       });
       out.sent++;
-      await db.rpc("push_record_result", { p_id: r.id, p_ok: true });
+      if (record) await db.rpc("push_record_result", { p_id: r.id, p_ok: true });
     } catch (err) {
       const status = (err as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410) {
-        await db.from("push_subscriptions").delete().eq("id", r.id);
-        out.removed++;
+        if (record) {
+          await db.from("push_subscriptions").delete().eq("id", r.id);
+          out.removed++;
+        } else out.failed++;
       } else {
         out.failed++;
-        await db.rpc("push_record_result", { p_id: r.id, p_ok: false });
+        if (record) await db.rpc("push_record_result", { p_id: r.id, p_ok: false });
         // Status only: never log endpoints or keys.
         console.warn("push delivery failed", status ?? "unknown");
       }
     }
   }
   return out;
+}
+
+/**
+ * Sends to explicit subscription rows (e.g. another member's, fetched through a guarded RPC).
+ * Results are not recorded: the caller's RLS client cannot update or delete another person's rows.
+ */
+export async function sendToSubscriptions(db: SupabaseClient, rows: Row[], payload: PushPayload): Promise<SendResult> {
+  const cfg = pushConfig();
+  if (!cfg) return { sent: 0, removed: 0, failed: 0 };
+  return deliver(db, rows, payloadSchema.parse(payload), cfg, false);
 }
 
 /**

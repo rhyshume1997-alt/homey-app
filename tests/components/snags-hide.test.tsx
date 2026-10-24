@@ -30,7 +30,7 @@ describe("AppNav with snags hidden", () => {
   it("leaves out the Snags tab and keeps the others", () => {
     render(<AppNav variant="tabs" hide={["/snags"]} />);
     expect(screen.queryByRole("link", { name: /snags/i })).toBeNull();
-    for (const name of [/home/i, /tasks/i, /money/i, /settings/i]) expect(screen.getByRole("link", { name })).toBeTruthy();
+    for (const name of [/home/i, /chores/i, /money/i, /settings/i]) expect(screen.getByRole("link", { name })).toBeTruthy();
   });
 
   it("shows Snags by default", () => {

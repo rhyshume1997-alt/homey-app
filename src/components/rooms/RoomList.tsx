@@ -79,7 +79,7 @@ export function RoomList({
   summaries: Record<string, RoomSummary>;
   actions: RoomActions;
 }) {
-  if (rooms.length === 0) return <p className="text-sm text-muted">No rooms yet. Add the first one above.</p>;
+  if (rooms.length === 0) return <p className="text-sm text-muted">No rooms yet. Tap a room above or add your own below.</p>;
   return (
     <ul className="flex flex-col gap-3" aria-label="Rooms">
       {rooms.map((room, i) => {

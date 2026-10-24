@@ -35,8 +35,8 @@ describe("groupBins", () => {
 describe("BinsList", () => {
   it("shows the empty state", () => {
     render(<BinsList days={[]} lastSynced={null} />);
-    expect(screen.getByText(/not connected yet/i)).toBeTruthy();
-    expect(screen.getByText(/Last synced: never/)).toBeTruthy();
+    expect(screen.getByText(/Add your bins once/i)).toBeTruthy();
+    expect(screen.queryByText(/Last synced/)).toBeNull();
   });
   it("highlights tonight and formats dates", () => {
     render(<BinsList today="2026-10-21" days={groupBins([{ date: "2026-10-22", bin: "Black bin" }, { date: "2026-10-29", bin: "Blue bin" }], NOW)} lastSynced="2026-10-21T05:00:00Z" />);
@@ -50,9 +50,9 @@ describe("BinsList", () => {
 });
 
 describe("BinsCard", () => {
-  it("says Not connected yet with no rows", () => {
+  it("says no bins added with no rows", () => {
     render(<BinsCard days={[]} />);
-    expect(screen.getByText("Not connected yet")).toBeTruthy();
+    expect(screen.getByText("No bins added yet")).toBeTruthy();
   });
   it("shows the next collection", () => {
     render(<BinsCard days={groupBins([{ date: "2026-10-29", bin: "Blue bin" }], NOW)} />);

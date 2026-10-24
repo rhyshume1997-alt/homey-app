@@ -11,7 +11,7 @@ export function BinsCard({ days, datePrefs }: { days: readonly BinDay[] | null; 
       <CardTitle icon="bins" tint="lavender">Next bin collection</CardTitle>
       <div className="mt-3 text-sm">
         {days === null ? <p className="text-muted">Could not load this right now.</p> : !next ? (
-          <p className="text-muted">Not connected yet</p>
+          <p className="text-muted">No bins added yet</p>
         ) : (
           <>
             {next.putOutTonight ? <p className="font-semibold">Put out tonight</p> : null}
