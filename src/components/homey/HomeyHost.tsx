@@ -5,7 +5,7 @@ import { HomeyLauncher } from "./HomeyLauncher";
 import { HomeyPanel } from "./HomeyPanel";
 import { HomeyFace } from "./HomeyFace";
 import type { HomeySuggestion } from "./HomeyBubble";
-import type { Expression, HomeyDigest, HomeyPrefs, NeedItem } from "./types";
+import type { Expression, FaceMoment, HomeyDigest, HomeyPrefs, NeedItem } from "./types";
 import type { NeedListHandlers } from "./NeedList";
 import { loadHomeyDigestAction, loadHomeyPanelAction, proposeFromItemAction } from "@/app/(house)/homey-panel-actions";
 import { confirmProposalAction, rejectProposalAction } from "@/app/(house)/assistant/actions";
@@ -46,8 +46,8 @@ function markSeen(userId: string) {
   }
 }
 
-const face = (expression: Expression, size: number, glance?: "left" | "right" | null) => (
-  <HomeyFace expression={expression} size={size} glance={glance ?? undefined} />
+const face = (expression: Expression, size: number, glance?: "left" | "right" | null, moment?: FaceMoment) => (
+  <HomeyFace expression={expression} size={size} glance={glance ?? undefined} talking={moment?.talking} greet={moment?.greet} />
 );
 
 /** Client host: floating Homey on every house page, and his panel when tapped. */
@@ -60,14 +60,18 @@ export function HomeyHost(props: Props) {
   const [partial, setPartial] = useState(false);
   const [spend, setSpend] = useState({ used: 0, cap: 5 });
   const [digest, setDigest] = useState<HomeyDigest | null>(null);
+  const [thinking, setThinking] = useState(false);
 
   const refreshDigest = useCallback(
     async (force: boolean) => {
       if (!loadDigest) return;
+      setThinking(true);
       try {
         setDigest(await loadDigest({ force }));
       } catch {
         setDigest(null);
+      } finally {
+        setThinking(false);
       }
     },
     [loadDigest],
@@ -153,7 +157,8 @@ export function HomeyHost(props: Props) {
         digest={digest}
         partial={partial}
         spend={spend}
-        face={(e, s) => face(e, s)}
+        face={(e, s, m) => face(e, s, null, m)}
+        thinking={thinking}
         onRefresh={() => void refreshDigest(true)}
         firstOpen={firstOpen}
         onFirstOpenShow={() => {

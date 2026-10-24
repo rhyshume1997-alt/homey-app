@@ -6,7 +6,7 @@ import { NAV_ITEMS } from "./nav-items";
 import { NavIcon } from "./NavIcon";
 
 /** Renders one nav list. `variant` switches between bottom tab bar and sidebar. */
-export function AppNav({ variant }: { variant: "tabs" | "sidebar" }) {
+export function AppNav({ variant, hide = [] }: { variant: "tabs" | "sidebar"; /** hrefs left out, e.g. "/snags" when snags are hidden. */ hide?: readonly string[] }) {
   const pathname = usePathname();
   const isTabs = variant === "tabs";
 
@@ -24,7 +24,7 @@ export function AppNav({ variant }: { variant: "tabs" | "sidebar" }) {
       }
     >
       <ul className={isTabs ? "flex h-[var(--tabbar-height)] items-stretch" : "flex flex-col gap-1"}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !hide.includes(item.href)).map((item) => {
           const active = item.available && pathname === item.href;
           return (
             <li key={item.href} className={isTabs ? "flex flex-1" : ""}>

@@ -68,7 +68,7 @@ const PAGES = [
   ["money", "/money"],
   ["money-check", "/money/check"],
   ["activity", "/activity"],
-  ["more", "/more"],
+  ["settings", "/settings"],
   ["budget", "/budget"],
   ["bins", "/bins"],
   ["documents", "/documents"],
@@ -116,7 +116,7 @@ test.describe("signed in", () => {
     const vp = page.viewportSize()!;
     expect(box.y + box.height).toBeGreaterThan(vp.height - 2);
     expect(box.y).toBeGreaterThan(vp.height * 0.75);
-    for (const label of ["Home", "Tasks", "Snags", "Money", "More"]) {
+    for (const label of ["Home", "Tasks", "Snags", "Money", "Settings"]) {
       const b = (await nav.getByRole("link", { name: label }).boundingBox())!;
       expect(b.height).toBeGreaterThanOrEqual(44);
       expect(b.width).toBeGreaterThanOrEqual(44);
@@ -139,13 +139,63 @@ test.describe("signed in", () => {
     await page.screenshot({ path: test.info().outputPath("quick-add.png") });
   });
 
-  test("date format setting is usable", async ({ page }) => {
+  /** Animation names running anywhere inside Homey's face on the page. */
+  async function homeyAnimations(page: Page) {
+    const face = page.locator("svg[data-expression]").first();
+    await expect(face).toBeVisible();
+    return face.evaluate((svg) =>
+      [svg, ...svg.querySelectorAll("*")]
+        .map((el) => getComputedStyle(el).animationName)
+        .filter((n) => n && n !== "none"),
+    );
+  }
+
+  test("Homey is alive: he blinks, breathes and tilts his head", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/", { waitUntil: "networkidle" });
+    const names = (await homeyAnimations(page)).join(" ");
+    for (const n of ["homey-bob", "homey-blink", "homey-tilt"]) expect(names).toContain(n);
+  });
+
+  test("Homey keeps still under reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/", { waitUntil: "networkidle" });
+    expect(await homeyAnimations(page)).toEqual([]);
+  });
+
+  test("More moved: /more opens Settings, and its links are cards on Home", async ({ page }) => {
     await page.goto("/more", { waitUntil: "networkidle" });
+    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+    await page.goto("/", { waitUntil: "networkidle" });
+    for (const name of ["Guest wifi", "Emergency card", "Calendar"]) await expect(page.getByRole("link", { name }).first()).toBeVisible();
+  });
+
+  test("date format setting is usable", async ({ page }) => {
+    await page.goto("/settings", { waitUntil: "networkidle" });
     const card = page.locator("section", { has: page.getByRole("heading", { name: "Date format" }) });
     await card.scrollIntoViewIfNeeded();
     expect(await smallTargets(page, 'section:has(#date-format-heading)')).toEqual([]);
     await expect(card.getByTestId("date-example")).toHaveText(/\d{2}\/[A-Z][a-z]{2}\/\d{4}/);
     await card.screenshot({ path: test.info().outputPath("date-format.png") });
+  });
+
+  test("Back button returns to the previous screen and is a big target", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+    const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /tasks/i }) }).last();
+    await nav.getByRole("link", { name: "Tasks" }).tap();
+    await expect(page).toHaveURL(/\/tasks$/);
+    const back = page.getByRole("button", { name: "Back" });
+    const box = (await back.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    await back.tap();
+    await expect(page).toHaveURL(/\/$/);
+
+    await page.goto("/money", { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Back" }).tap();
+    await expect(page).toHaveURL(/\/$/);
   });
 });
 

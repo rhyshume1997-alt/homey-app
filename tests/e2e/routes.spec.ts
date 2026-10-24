@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const PROTECTED = ["/tasks", "/snags", "/money", "/activity", "/more", "/activity?before=1"];
+const PROTECTED = ["/tasks", "/snags", "/money", "/activity", "/more", "/settings", "/activity?before=1"];
 
 for (const path of PROTECTED) {
   test(`GET ${path} redirects to /login with next, no-store`, async ({ request }) => {

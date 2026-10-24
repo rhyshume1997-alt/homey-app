@@ -22,7 +22,7 @@ function setup(over: Partial<HomeyPanelProps> = {}) {
     items,
     digest: { summary: "Gas renewal is due soon.", top: [], createdAt: "2026-10-22T07:12:00Z", stale: false },
     spend: { used: 0.04, cap: 5 },
-    face: (e, s) => <span data-testid="face">{`${e}:${s}`}</span>,
+    face: (e, s, m) => <span data-testid="face" data-greet={m?.greet ? "true" : undefined} data-talking={m?.talking ? "true" : undefined}>{`${e}:${s}`}</span>,
     onRefresh: vi.fn(),
     onPropose: vi.fn().mockResolvedValue({ proposalId: "p1", text: "Add task: Review Gas tariff renewal (due 29 Oct)" }),
     onConfirm: vi.fn().mockResolvedValue({ ok: true }),
@@ -160,5 +160,19 @@ describe("HomeyPanel", () => {
   it("renders nothing when closed", () => {
     setup({ open: false });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("HomeyPanel face moments", () => {
+  it("waves when the panel opens, without talking", () => {
+    setup();
+    const face = screen.getByTestId("face");
+    expect(face.getAttribute("data-greet")).toBe("true");
+    expect(face.hasAttribute("data-talking")).toBe(false);
+  });
+
+  it("talks while the AI summary is being worked out", () => {
+    setup({ thinking: true });
+    expect(screen.getByTestId("face").getAttribute("data-talking")).toBe("true");
   });
 });

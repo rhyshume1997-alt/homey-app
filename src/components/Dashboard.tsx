@@ -143,6 +143,8 @@ export function Dashboard({
   now,
   datePrefs,
   contributions,
+  showSnags = true,
+  hub,
 }: {
   displayName: string;
   data: DashboardData;
@@ -150,6 +152,10 @@ export function Dashboard({
   datePrefs?: DatePrefs;
   /** Joint contributions card, streamed separately because it may call Google. */
   contributions?: ReactNode;
+  /** False when the person hid the snag list in Settings. */
+  showSnags?: boolean;
+  /** The tappable area cards (what used to be under More), shown first under the greeting. */
+  hub?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -157,6 +163,7 @@ export function Dashboard({
         <h1 className="text-2xl font-semibold">{greeting(now)}, {firstName(displayName)}</h1>
         <p className="text-sm text-muted"><time dateTime={data.today}>{formatDate(data.today, datePrefs)}</time></p>
       </header>
+      {hub}
       <div className="[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
         <AiRecommendationsCard tasks={data.suggestionInput.tasks} snags={data.suggestionInput.snags} records={data.suggestionInput.records} today={data.today} />
       </div>
@@ -174,18 +181,20 @@ export function Dashboard({
         </Card>
         <BinsCard days={data.bins} datePrefs={datePrefs} />
         <NotificationsCard items={data.notifications} />
-        <Card title="Open snags" icon="snags" tint="rose" href="/snags" hrefLabel="All snags">
-          {data.snags === null || data.openSnagCount === null ? <Unavailable /> : data.openSnagCount === 0 ? <Note>No open snags.</Note> : (
-            <>
-              <p className="mb-2 text-sm"><strong>{data.openSnagCount}</strong> open</p>
-              <List>
-                {data.snags.map((s) => (
-                  <Row key={s.id}><strong>{s.title}</strong><Muted>{s.priority} priority</Muted></Row>
-                ))}
-              </List>
-            </>
-          )}
-        </Card>
+        {showSnags ? (
+          <Card title="Open snags" icon="snags" tint="rose" href="/snags" hrefLabel="All snags">
+            {data.snags === null || data.openSnagCount === null ? <Unavailable /> : data.openSnagCount === 0 ? <Note>No open snags. All done? <Link href="/settings" className="underline">Hide the snag list in Settings</Link>.</Note> : (
+              <>
+                <p className="mb-2 text-sm"><strong>{data.openSnagCount}</strong> open</p>
+                <List>
+                  {data.snags.map((s) => (
+                    <Row key={s.id}><strong>{s.title}</strong><Muted>{s.priority} priority</Muted></Row>
+                  ))}
+                </List>
+              </>
+            )}
+          </Card>
+        ) : null}
         <Card title="Upcoming renewals" icon="calendar" tint="amber" href="/money" hrefLabel="All renewals">
           {data.renewals === null ? <Unavailable /> : data.renewals.length === 0 ? <Note>Nothing due in the next 90 days.</Note> : (
             <List>

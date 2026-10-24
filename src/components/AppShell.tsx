@@ -1,6 +1,7 @@
 import { Suspense, cache } from "react";
 import { AppNav } from "./AppNav";
 import { QuickAdd } from "./QuickAdd";
+import { BackButton } from "./BackButton";
 import { NotificationBell } from "./notifications/NotificationBell";
 import { getAuthUser, getSession } from "@/server/auth/session";
 import { unreadCount } from "@/server/data/notifications";
@@ -74,7 +75,8 @@ async function HomeyMount() {
   return props ? <HomeyHost {...props} /> : null;
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, showSnags = true }: { children: React.ReactNode; showSnags?: boolean }) {
+  const hide = showSnags ? [] : ["/snags"];
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       <aside className="hidden w-[var(--sidebar-width)] shrink-0 border-r border-border bg-surface p-4 lg:block">
@@ -82,21 +84,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <p className="text-xl font-semibold">Our Home</p>
           <Bell />
         </div>
-        <AppNav variant="sidebar" />
+        <AppNav variant="sidebar" hide={hide} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-[var(--topbar-height)] items-center border-b border-border bg-surface px-4 justify-between lg:hidden">
-          <p className="text-lg font-semibold">Our Home</p>
+          <div className="flex items-center gap-1">
+            <BackButton className="-ml-2 inline-flex" />
+            <p className="text-lg font-semibold">Our Home</p>
+          </div>
           <Bell />
         </header>
         <main
           id="main"
           className="mx-auto w-full max-w-5xl flex-1 p-4 pb-[calc(var(--tabbar-height)+6rem)] lg:p-8 lg:pb-24"
         >
+          <BackButton className="mb-4 hidden lg:inline-flex" />
           {children}
         </main>
       </div>
-      <AppNav variant="tabs" />
+      <AppNav variant="tabs" hide={hide} />
       <QuickAdd />
       <Suspense fallback={null}>
         <HomeyMount />

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createUserClient } from "@/server/db/supabase";
 import type { HouseholdRole } from "@/contracts/household";
 import { parseDatePrefs, type DatePrefs } from "@/components/dates";
+import { parseShowSnags } from "@/components/snags/prefs";
 
 export type Session = {
   userId: string;
@@ -15,6 +16,8 @@ export type HouseholdSession = Session & {
   role: HouseholdRole;
   displayName: string;
   datePrefs: DatePrefs;
+  /** Display only: the person chose to hide the snag list. Never used for authorisation. */
+  showSnags: boolean;
 };
 
 /**
@@ -57,6 +60,7 @@ export const getSession = cache(async function getSession(): Promise<HouseholdSe
     role: m.role,
     displayName: m.display_name,
     datePrefs: parseDatePrefs(data.user.user_metadata),
+    showSnags: parseShowSnags(data.user.user_metadata),
   };
 });
 

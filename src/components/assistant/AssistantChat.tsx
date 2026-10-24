@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { BTN_PRIMARY, FIELD } from "@/components/tasks/styles";
+import { HomeyFace } from "@/components/homey/HomeyFace";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Send = (messages: Msg[]) => Promise<{ ok: true; reply: string; proposed: number } | { ok: false; error: string }>;
@@ -57,7 +58,7 @@ export function AssistantChat({ send }: { send: Send }) {
         )}
         {pending ? (
           <li className="flex items-end gap-2 text-muted">
-            <HomeyAvatar />
+            <HomeyAvatar talking />
             <span>Thinking...</span>
           </li>
         ) : null}
@@ -83,13 +84,11 @@ export function AssistantChat({ send }: { send: Send }) {
   );
 }
 
-/** Placeholder slot: the orchestrator swaps in the real face. */
-function HomeyAvatar() {
+/** Homey beside his replies. A fixed 28px box, so the face's motion never moves the text. */
+function HomeyAvatar({ talking = false }: { talking?: boolean }) {
   return (
-    <span
-      aria-hidden="true"
-      data-expression="smiley"
-      className="homey-avatar inline-block h-7 w-7 shrink-0 rounded-full bg-sky-200"
-    />
+    <span aria-hidden="true" className="homey-avatar inline-flex h-7 w-7 shrink-0 items-center justify-center">
+      <HomeyFace expression="smiley" size={28} talking={talking} />
+    </span>
   );
 }

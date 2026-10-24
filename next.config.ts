@@ -39,10 +39,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Document uploads are up to 20 MB; the extra headroom covers the form fields.
   experimental: { serverActions: { bodySizeLimit: "21mb" } },
-  // Tailwind v4 via the generator's Turbopack loader.
+  // Tailwind v4 via the generator's Turbopack loader, for global CSS only. Its `as: "*.css"` would turn a
+  // *.module.css into global CSS with no class names (that silently disabled Homey's face styles).
   turbopack: {
     rules: {
       "*.css": {
+        condition: { not: { path: /\.module\.css$/ } },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },

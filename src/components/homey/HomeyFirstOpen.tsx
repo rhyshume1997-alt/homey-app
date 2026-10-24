@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { Expression } from "./types";
+import type { Expression, FaceMoment } from "./types";
 
 /** First-ever open content. Pure presentation. */
 export function HomeyFirstOpen({
@@ -9,13 +9,13 @@ export function HomeyFirstOpen({
   onShow,
   onDismiss,
 }: {
-  face: (expression: Expression, size: number) => ReactNode;
+  face: (expression: Expression, size: number, moment?: FaceMoment) => ReactNode;
   onShow: () => void;
   onDismiss: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-3 p-4 text-center" data-testid="homey-first-open">
-      {face("excited", 96)}
+      {face("excited", 96, { greet: true })}
       <h3 className="text-lg font-semibold">Hello, I&apos;m your Homey, your AI assistant for this app</h3>
       <p className="text-sm">I gather what needs doing across the house and sum it up for you each day.</p>
       <p className="text-sm">I suggest, you decide. Nothing changes until you tap Confirm.</p>

@@ -1,11 +1,10 @@
 import { Suspense } from "react";
 import { Dashboard } from "@/components/Dashboard";
 import { ContributionsCard, contributionsFromCosts } from "@/components/home/ContributionsCard";
-import { DateFormatSettings } from "@/components/settings/DateFormatSettings";
+import { MoreHub } from "@/components/more/MoreHub";
 import { requireSession } from "@/server/auth/session";
-import { getDashboardData, todayInLondon } from "@/server/data/dashboard";
+import { getDashboardData } from "@/server/data/dashboard";
 import { loadCosts } from "@/server/integrations/sheets/load";
-import { saveDateFormatAction } from "./settings-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +35,10 @@ export default async function HomePage() {
         data={data}
         now={now}
         datePrefs={session.datePrefs}
+        showSnags={session.showSnags}
+        hub={<MoreHub />}
         contributions={<Suspense fallback={<ContributionsSkeleton />}><ContributionsLoader /></Suspense>}
       />
-      <DateFormatSettings prefs={session.datePrefs} example={todayInLondon(now)} action={saveDateFormatAction} />
     </div>
   );
 }
