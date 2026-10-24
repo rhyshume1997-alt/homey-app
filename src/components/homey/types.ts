@@ -1,6 +1,9 @@
 /** Shared Homey contracts (D18). Builders implement against these; do not change shapes without the orchestrator. */
 import type { DueKind, Light } from "@/components/status";
 
+/** Moments that animate the face: replying or thinking, and a one-off greeting when it appears. */
+export type FaceMoment = { talking?: boolean; greet?: boolean };
+
 export type Expression = "smiley" | "happy" | "excited" | "surprised" | "concerned" | "shocked" | "sleepy";
 
 /** Face for the most urgent state: red shocked, amber concerned, all green happy. */

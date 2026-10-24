@@ -139,6 +139,30 @@ test.describe("signed in", () => {
     await page.screenshot({ path: test.info().outputPath("quick-add.png") });
   });
 
+  /** Animation names running anywhere inside Homey's face on the page. */
+  async function homeyAnimations(page: Page) {
+    const face = page.locator("svg[data-expression]").first();
+    await expect(face).toBeVisible();
+    return face.evaluate((svg) =>
+      [svg, ...svg.querySelectorAll("*")]
+        .map((el) => getComputedStyle(el).animationName)
+        .filter((n) => n && n !== "none"),
+    );
+  }
+
+  test("Homey is alive: he blinks, breathes and tilts his head", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/", { waitUntil: "networkidle" });
+    const names = (await homeyAnimations(page)).join(" ");
+    for (const n of ["homey-bob", "homey-blink", "homey-tilt"]) expect(names).toContain(n);
+  });
+
+  test("Homey keeps still under reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/", { waitUntil: "networkidle" });
+    expect(await homeyAnimations(page)).toEqual([]);
+  });
+
   test("date format setting is usable", async ({ page }) => {
     await page.goto("/more", { waitUntil: "networkidle" });
     const card = page.locator("section", { has: page.getByRole("heading", { name: "Date format" }) });

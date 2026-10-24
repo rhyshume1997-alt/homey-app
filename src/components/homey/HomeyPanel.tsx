@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { HomeyFirstOpen } from "./HomeyFirstOpen";
 import { NeedList, type NeedListHandlers } from "./NeedList";
 import { worstLight } from "@/components/status";
-import { expressionFor, type Expression, type HomeyDigest, type NeedItem } from "./types";
+import { expressionFor, type Expression, type FaceMoment, type HomeyDigest, type NeedItem } from "./types";
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -20,7 +20,9 @@ export type HomeyPanelProps = NeedListHandlers & {
   partial?: boolean;
   /** Spend this month and the cap, in pounds. */
   spend: { used: number; cap: number };
-  face: (expression: Expression, size: number) => ReactNode;
+  face: (expression: Expression, size: number, moment?: FaceMoment) => ReactNode;
+  /** The AI summary is being worked out: Homey looks like he is talking. */
+  thinking?: boolean;
   onRefresh: () => void;
   /** When true, show first-ever-open content instead of the list. */
   firstOpen?: boolean;
@@ -105,7 +107,7 @@ export function HomeyPanel(props: HomeyPanelProps) {
       >
         <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-border lg:hidden" data-testid="drag-handle" />
         <div className="flex items-start gap-3 p-4 pb-2">
-          <div className="shrink-0">{face(firstOpen ? "smiley" : expression, 56)}</div>
+          <div className="shrink-0">{face(firstOpen ? "smiley" : expression, 56, { greet: !firstOpen, talking: props.thinking })}</div>
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-lg font-semibold">
               What needs doing today
