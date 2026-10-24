@@ -15,6 +15,8 @@ const contributionsSlot = <section aria-label="Joint account contributions" />;
 
 const base: Omit<DashboardData, "tasks" | "snags" | "openSnagCount" | "activity" | "renewals" | "expenses"> = {
   today: "2026-10-21",
+  chores: [],
+  members: [],
   bins: [{ date: "2026-10-22", bins: ["Green"], putOutTonight: true }],
   notifications: [],
   awaiting: { count: 0, top: [], everSynced: true },
@@ -25,7 +27,7 @@ const base: Omit<DashboardData, "tasks" | "snags" | "openSnagCount" | "activity"
   suggestionInput: { tasks: [], snags: [], records: [] },
 };
 const failed: typeof base = {
-  today: "2026-10-21", bins: null, notifications: null, awaiting: null,
+  today: "2026-10-21", chores: null, members: null, bins: null, notifications: null, awaiting: null,
   supplies: null, maintenance: null, energy: null, documents: null,
   suggestionInput: { tasks: null, snags: null, records: null },
 };
@@ -98,7 +100,7 @@ describe("Dashboard", () => {
     render(<Dashboard displayName="Alex" data={data} now={now} contributions={contributionsSlot} />);
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual([
-      "Suggestions", "Today", "Tasks due today", "Next bin collection", "Notifications", "Open snags", "Upcoming renewals",
+      "Suggestions", "Today", "Chores", "Tasks due today", "Next bin collection", "Notifications", "Open snags", "Upcoming renewals",
       "Household expenses", "Joint account contributions", "Awaiting company replies", "Supplies",
       "Maintenance", "Energy", "Documents", "Recent activity",
     ]);

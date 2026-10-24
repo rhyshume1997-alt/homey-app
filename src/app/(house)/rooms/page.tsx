@@ -2,6 +2,7 @@ import { requireSession } from "@/server/auth/session";
 import { listRooms, listRoomItems } from "@/server/data/rooms";
 import { todayInLondon } from "@/components/tasks/group";
 import { AddRoomForm, RoomList } from "@/components/rooms/RoomList";
+import { QuickAddRooms } from "@/components/rooms/QuickAddRooms";
 import { summariseRoom, type RoomSummary } from "@/components/rooms/summary";
 import { LightSummary } from "@/components/ui/StatusPill";
 import { createRoomAction, deleteRoomAction, moveRoomAction, renameRoomAction } from "./actions";
@@ -23,6 +24,7 @@ export default async function RoomsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Rooms</h1>
       {items.ok && rooms.ok && <LightSummary lights={all} />}
+      {rooms.ok && <QuickAddRooms names={rooms.data.map((r) => r.name)} action={createRoomAction} />}
       {rooms.ok ? (
         <RoomList
           rooms={rooms.data}

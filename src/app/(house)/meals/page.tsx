@@ -3,6 +3,8 @@ import { listSupplyRefs, listWeek } from "@/server/data/meals";
 import { MealsWeek } from "@/components/meals/MealsWeek";
 import { resolveWeek, todayLondon } from "@/components/meals/types";
 import { copyLastWeekAction, deleteMealAction, saveMealAction } from "./actions";
+import { ImportFromLink } from "@/components/meals/ImportFromLink";
+import { importRecipeFromText, importRecipePreview, saveImportedRecipeAction } from "./import-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,12 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Meal planner</h1>
+      <ImportFromLink
+        week={week}
+        meals={meals.ok ? meals.data : []}
+        datePrefs={session.datePrefs}
+        actions={{ preview: importRecipePreview, fromText: importRecipeFromText, save: saveImportedRecipeAction }}
+      />
       {meals.ok ? (
         <MealsWeek
           week={week}

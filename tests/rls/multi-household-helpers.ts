@@ -84,6 +84,8 @@ export const SEEDS: Record<string, [cols: string, vals: string]> = {
   ai_usage: ["household_id,month,model,input_tokens,output_tokens,cost_pence", "$1,date_trunc('month',now())::date,'claude-test',1,1,1"],
   audit_log: ["household_id,action,entity_type", "$1,'seed','fixture'"],
   bin_collections: ["household_id,collection_date,bin_name", "$1,current_date,'Seed bin'"],
+  bin_settings: ["household_id,council_url", "$1,'https://seed.example.test/bins'"],
+  bin_schedules: ["household_id,bin_name,colour,first_date,every_weeks", "$1,'Seed bin','green',current_date,2"],
   budget_snapshots: ["household_id,data", "$1,'{}'::jsonb"],
   checklist_items: ["household_id,title,frequency", "$1,'Seed check','monthly'"],
   email_threads: ["household_id,thread_hash,member,subject,counterpart_domain,last_message_at,last_from", "$1,repeat('b',64),'Seed','Subject','example.com',now(),'me'"],

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Dashboard } from "@/components/Dashboard";
 import { ContributionsCard, contributionsFromCosts } from "@/components/home/ContributionsCard";
 import { MoreHub } from "@/components/more/MoreHub";
+import { completeTaskAction, createTaskAction, nudgeAssigneeAction } from "./tasks/actions";
 import { requireSession } from "@/server/auth/session";
 import { getDashboardData } from "@/server/data/dashboard";
 import { loadCosts } from "@/server/integrations/sheets/load";
@@ -36,6 +37,8 @@ export default async function HomePage() {
         now={now}
         datePrefs={session.datePrefs}
         showSnags={session.showSnags}
+        viewerId={session.userId}
+        choreActions={{ create: createTaskAction, complete: completeTaskAction, nudge: nudgeAssigneeAction }}
         hub={<MoreHub />}
         contributions={<Suspense fallback={<ContributionsSkeleton />}><ContributionsLoader /></Suspense>}
       />

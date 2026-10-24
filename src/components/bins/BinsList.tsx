@@ -7,7 +7,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 export function BinsEmpty() {
   return (
     <p className="rounded-md border border-border bg-surface-muted px-4 py-3 text-sm text-muted">
-      No bin collections yet. The council push script is not connected yet, so nothing has been received.
+      No bin collections yet. Add your bins once below, or open your council&apos;s page.
     </p>
   );
 }
@@ -34,9 +34,7 @@ export function BinsList({ days, datePrefs, lastSynced, today = londonToday(new 
           ))}
         </ul>
       )}
-      <p className="text-sm text-muted">
-        {lastSynced ? <>Last synced {formatDate(lastSynced, datePrefs, true)}</> : "Last synced: never"}
-      </p>
+      {lastSynced ? <p className="text-sm text-muted">Last synced {formatDate(lastSynced, datePrefs, true)}</p> : null}
     </div>
   );
 }

@@ -33,7 +33,7 @@ function AddMissing({ week, missing, action }: { week: string; missing: NeededIt
         >
           <input type="hidden" name="week" value={week} />
           <p className="font-medium">Add these {missing.length} items to the shopping list?</p>
-          <ul className="flex flex-col gap-1 text-sm">
+          <ul className="flex min-w-0 flex-col gap-1 text-sm [overflow-wrap:anywhere]">
             {missing.map((i) => (
               <li key={i.key}>
                 <input type="hidden" name="key" value={i.key} />
@@ -94,15 +94,15 @@ export function IngredientsNeeded({
           </div>
           <ul className="flex flex-col gap-2">
             {items.map((i) => (
-              <li key={i.key} data-testid="needed-row" className="flex items-start justify-between gap-3 rounded-md bg-surface-muted px-3 py-3">
-                <div>
+              <li key={i.key} data-testid="needed-row" className="flex min-w-0 items-start justify-between gap-3 rounded-md bg-surface-muted px-3 py-3 [overflow-wrap:anywhere]">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium">
                     {i.name}
                     {i.quantity && <span className="font-normal text-muted"> · {i.quantity}</span>}
                   </p>
                   <p className="text-sm text-muted">{i.meals.join(", ")}</p>
                 </div>
-                <StatusPill light={LIGHT[i.status]} label={NEED_LABEL[i.status]} />
+                <span className="shrink-0"><StatusPill light={LIGHT[i.status]} label={NEED_LABEL[i.status]} /></span>
               </li>
             ))}
           </ul>

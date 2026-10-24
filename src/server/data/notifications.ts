@@ -10,7 +10,7 @@ const FAILED = "Something went wrong. Please try again.";
 
 const RowSchema = z.object({
   id: z.uuid(),
-  kind: z.enum(["renewal_due", "task_due", "task_overdue", "bin_tomorrow", "snag_stale", "document_expiring", "system"]),
+  kind: z.enum(["renewal_due", "task_due", "task_overdue", "bin_tomorrow", "snag_stale", "document_expiring", "system", "chore_nudge"]),
   title: z.string(),
   body: z.string().nullable(),
   link: z.string().nullable(),
