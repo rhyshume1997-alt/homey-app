@@ -1,4 +1,5 @@
 import "server-only";
+import { isPrimaryHousehold } from "@/server/env";
 import type { HouseholdSession } from "@/server/auth/session";
 import { callClaude, MAX_TOKENS, MODELS, type AiDeps } from "./client";
 import { loadContext, SYSTEM_PROMPT } from "./context";
@@ -18,7 +19,8 @@ export async function chatTurn(
   today: string,
   loadCtx: (today: string) => Promise<string> = loadContext,
 ): Promise<ChatResult> {
-  if (!deps.apiKey) return { ok: false, error: "The assistant is off. No API key is set." };
+  // No overall spend ceiling yet: the assistant is limited to the primary household.
+  if (!isPrimaryHousehold(s.householdId) || !deps.apiKey) return { ok: false, error: "The assistant is off. No API key is set." };
   const summary = await loadCtx(today);
   const r = await callClaude(deps, {
     model: MODELS.chat,

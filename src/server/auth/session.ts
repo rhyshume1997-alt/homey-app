@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { HOUSEHOLD_COOKIE, pickMembership } from "@/server/auth/household-cookie";
 import { createUserClient } from "@/server/db/supabase";
 import type { HouseholdRole } from "@/contracts/household";
 import { parseDatePrefs, type DatePrefs } from "@/components/dates";
@@ -15,6 +17,8 @@ export type HouseholdSession = Session & {
   householdId: string;
   role: HouseholdRole;
   displayName: string;
+  /** Every household the caller is an ACTIVE member of, oldest first. Feeds the switcher. */
+  memberships: { householdId: string; name: string; role: HouseholdRole }[];
   datePrefs: DatePrefs;
   /** Display only: the person chose to hide the snag list. Never used for authorisation. */
   showSnags: boolean;
@@ -46,27 +50,40 @@ export const getSession = cache(async function getSession(): Promise<HouseholdSe
   const auth = await getAuthUser();
   if (!auth) return null;
   const { supabase, user } = auth;
-  const data = { user };
-  const { data: m } = await supabase
+  const { data } = await supabase
     .from("household_members")
-    .select("household_id, role, display_name")
-    .eq("user_id", data.user.id)
-    .limit(1)
-    .maybeSingle();
-  if (!m) return null;
+    .select("household_id, role, display_name, households(name)")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+  const rows = (data ?? []).map((r) => {
+    const h = (r as { households?: { name?: string } | { name?: string }[] | null }).households;
+    const name = (Array.isArray(h) ? h[0]?.name : h?.name) ?? "Household";
+    return { householdId: r.household_id as string, name, role: r.role as HouseholdRole, displayName: r.display_name as string };
+  });
+  // The cookie is a preference, never authority: it only counts if it names an active membership.
+  const chosen = pickMembership(rows, (await cookies()).get(HOUSEHOLD_COOKIE)?.value);
+  if (!chosen) return null;
   return {
-    userId: data.user.id,
-    householdId: m.household_id,
-    role: m.role,
-    displayName: m.display_name,
-    datePrefs: parseDatePrefs(data.user.user_metadata),
-    showSnags: parseShowSnags(data.user.user_metadata),
+    userId: user.id,
+    householdId: chosen.householdId,
+    role: chosen.role,
+    displayName: chosen.displayName,
+    memberships: rows.map(({ householdId, name, role }) => ({ householdId, name, role })),
+    datePrefs: parseDatePrefs(user.user_metadata),
+    showSnags: parseShowSnags(user.user_metadata),
   };
 });
 
-/** For pages, route handlers and server actions: the session, or a redirect to /login. */
+/**
+ * For pages, route handlers and server actions: the session, or a redirect. Signed in without an
+ * active membership goes to /onboarding; signed out goes to /login.
+ */
 export async function requireSession(): Promise<HouseholdSession> {
   const s = await getSession();
-  if (!s) redirect("/login");
-  return s;
+  if (s) return s;
+  redirect((await getAuthUser()) ? "/onboarding" : "/login");
 }
+
+/** Signed in (validated with Supabase Auth), membership not required. For /onboarding and /invite. */
+export const getAuthOnly = getAuthUser;

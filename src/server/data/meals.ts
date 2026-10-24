@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { IngredientRowSchema, MealRowSchema, type MealInput } from "@/contracts/meals";
 import {
@@ -39,11 +40,12 @@ const ING_COLS = "id,meal_id,name,quantity,unit_price_estimate,supply_id";
 /** Meals (no ingredients) between two YYYY-MM-DD dates, inclusive. For the calendar. */
 export async function listMealsForRange(from: string, to: string): Promise<Result<Meal[]>> {
   if (!isIsoDate(from) || !isIsoDate(to)) return { ok: false, error: MSG.invalid };
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("meals")
-    .select(MEAL_COLS)
+    .select(MEAL_COLS).eq("household_id", householdId)
     .gte("planned_on", from)
     .lte("planned_on", to)
     .order("planned_on", { ascending: true })
@@ -52,10 +54,11 @@ export async function listMealsForRange(from: string, to: string): Promise<Resul
   return error || !parsed.success ? { ok: false, error: MSG.load } : { ok: true, data: parsed.data };
 }
 
-async function mealsWithIngredients(db: Db, from: string, to: string): Promise<Result<MealWithIngredients[]>> {
+async function mealsWithIngredients(db: Db, householdId: string, from: string, to: string): Promise<Result<MealWithIngredients[]>> {
   const { data, error } = await db
     .from("meals")
     .select(`${MEAL_COLS}, meal_ingredients(${ING_COLS})`)
+    .eq("household_id", householdId)
     .gte("planned_on", from)
     .lte("planned_on", to)
     .order("planned_on", { ascending: true })
@@ -73,9 +76,9 @@ async function mealsWithIngredients(db: Db, from: string, to: string): Promise<R
 
 /** Monday to Sunday of the week starting `monday`, with ingredients. */
 export async function listWeek(monday: string): Promise<Result<MealWithIngredients[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  return mealsWithIngredients(db, monday, addDays(monday, 6));
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  return mealsWithIngredients(sc.db, sc.householdId, monday, addDays(monday, 6));
 }
 
 export type NeededData = { items: NeededItem[]; supplies: SupplyRef[] };
@@ -149,8 +152,8 @@ export async function copyLastWeek(s: HouseholdSession, monday: string): Promise
   if (!db) return { ok: false, error: MSG.failed };
   const prevStart = addDays(monday, -7);
   const [prev, cur] = await Promise.all([
-    mealsWithIngredients(db, prevStart, addDays(prevStart, 6)),
-    mealsWithIngredients(db, monday, addDays(monday, 6)),
+    mealsWithIngredients(db, s.householdId, prevStart, addDays(prevStart, 6)),
+    mealsWithIngredients(db, s.householdId, monday, addDays(monday, 6)),
   ]);
   if (!prev.ok || !cur.ok) return { ok: false, error: MSG.failed };
   if (prev.data.length === 0) return { ok: false, error: MSG.nothingToCopy };

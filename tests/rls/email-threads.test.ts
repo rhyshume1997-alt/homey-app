@@ -251,7 +251,16 @@ describe("oversize ingest body", () => {
 });
 
 describe("authenticated sync (shared apply path)", () => {
-  const call = "select public.sync_my_email_threads($1, $2::jsonb) as n";
+  // Gmail may only sync into the household where Google was connected (multi-household S2 fix).
+  beforeAll(async () => {
+    for (const [u, h] of [[UA1, HA], [UA2, HA], [UB, HB]]) {
+      await db.query("insert into private.google_tokens (user_id, household_id, ciphertext, scopes) values ($1, $2, 'v1:test', 's') on conflict (user_id) do update set household_id = excluded.household_id", [u, h]);
+    }
+  });
+  afterAll(async () => {
+    await db.query("delete from private.google_tokens where user_id = any($1::uuid[])", [[UA1, UA2, UB]]);
+  });
+  const call = "select public.sync_my_email_threads($1::uuid, $2, $3::jsonb) as n";
   const asUser = async (sub: string) => {
     await db.query("set local role authenticated");
     await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub, role: "authenticated" })]);
@@ -261,7 +270,7 @@ describe("authenticated sync (shared apply path)", () => {
     await db.query("begin");
     try {
       await asUser(UA1);
-      expect((await db.query(call, ["A1", JSON.stringify([thread()])])).rows[0]).toEqual({ n: 1 });
+      expect((await db.query(call, [HA, "A1", JSON.stringify([thread()])])).rows[0]).toEqual({ n: 1 });
       expect((await db.query("select public.my_gmail_sync_at() as t")).rows[0]?.t).toBeTruthy();
       await db.query("reset role");
       expect((await db.query("select household_id, member, status from public.email_threads where member = 'A1'")).rows).toEqual([{ household_id: HA, member: "A1", status: "awaiting" }]);
@@ -281,13 +290,13 @@ describe("authenticated sync (shared apply path)", () => {
       Array.from({ length: 51 }, (_, i) => thread({ thread_hash: i.toString(16).padStart(64, "0") })),
     ];
     for (const threads of bad) {
-      expect((await tryQuery(db, authed(UA1), call, ["A1", JSON.stringify(threads)])).error?.message).toMatch(/invalid payload/);
+      expect((await tryQuery(db, authed(UA1), call, [HA, "A1", JSON.stringify(threads)])).error?.message).toMatch(/invalid payload/);
     }
     await db.query("begin");
     try {
       await asUser(UA1);
-      await db.query(call, ["A1", JSON.stringify([thread()])]);
-      await db.query(call, ["A1", JSON.stringify([thread({ last_from: "them", last_message_at: "2026-10-13T09:00:00Z" })])]);
+      await db.query(call, [HA, "A1", JSON.stringify([thread()])]);
+      await db.query(call, [HA, "A1", JSON.stringify([thread({ last_from: "them", last_message_at: "2026-10-13T09:00:00Z" })])]);
       await db.query("reset role");
       expect((await rows())[0]).toMatchObject({ status: "replied" });
     } finally {
@@ -299,10 +308,10 @@ describe("authenticated sync (shared apply path)", () => {
     await db.query("begin");
     try {
       await asUser(UA1);
-      await db.query(call, ["A1", JSON.stringify([thread({ thread_hash: hash("e"), subject: "Mine" })])]);
+      await db.query(call, [HA, "A1", JSON.stringify([thread({ thread_hash: hash("e"), subject: "Mine" })])]);
       await db.query("reset role");
       await asUser(UA2);
-      await db.query(call, ["A2", JSON.stringify([thread({ thread_hash: hash("e"), subject: "Hijacked" })])]);
+      await db.query(call, [HA, "A2", JSON.stringify([thread({ thread_hash: hash("e"), subject: "Hijacked" })])]);
       await db.query("reset role");
       expect((await db.query("select member, subject from public.email_threads where household_id=$1 and thread_hash=$2", [HA, hash("e")])).rows).toEqual([
         { member: "A1", subject: "Mine" },
@@ -313,16 +322,16 @@ describe("authenticated sync (shared apply path)", () => {
   });
 
   it("rejects another person's name, non-members and anon", async () => {
-    expect((await tryQuery(db, authed(UA1), call, ["A2", "[]"])).error?.message).toMatch(/member mismatch/);
-    expect((await tryQuery(db, authed("a2a20000-0000-4000-8000-0000000000ff"), call, ["x", "[]"])).error?.message).toMatch(/not a member/);
-    expect((await tryQuery(db, { role: "anon" }, call, ["A1", "[]"])).error?.message).toMatch(/permission denied/);
+    expect((await tryQuery(db, authed(UA1), call, [HA, "A2", "[]"])).error?.message).toMatch(/member mismatch/);
+    expect((await tryQuery(db, authed("a2a20000-0000-4000-8000-0000000000ff"), call, [HA, "x", "[]"])).error?.message).toMatch(/not a member/);
+    expect((await tryQuery(db, { role: "anon" }, call, [HA, "A1", "[]"])).error?.message).toMatch(/permission denied/);
   });
 
   it("a household B member writes only into household B", async () => {
     await db.query("begin");
     try {
       await asUser(UB);
-      await db.query(call, ["B1", JSON.stringify([thread()])]);
+      await db.query(call, [HB, "B1", JSON.stringify([thread()])]);
       await db.query("reset role");
       expect((await db.query("select household_id from public.email_threads where member = 'B1'")).rows).toEqual([{ household_id: HB }]);
     } finally {

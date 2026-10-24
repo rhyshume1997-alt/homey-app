@@ -71,6 +71,7 @@ export async function otherMember(session: HouseholdSession): Promise<{ userId: 
     .from("household_members")
     .select("user_id, display_name")
     .eq("household_id", session.householdId)
+    .eq("status", "active")
     .neq("user_id", session.userId)
     .limit(1)
     .maybeSingle();
@@ -115,6 +116,7 @@ export async function otherMemberActivity(session: HouseholdSession, now: Date):
   const { data: sent } = await db
     .from("kudos")
     .select("audit_id")
+    .eq("household_id", session.householdId)
     .eq("from_user", session.userId)
     .in("audit_id", rows.map((r) => r.id));
   const thanked = new Set(

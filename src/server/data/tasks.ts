@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { TaskInputSchema, TaskSchema, type Task, type TaskInput } from "@/contracts/tasks";
 import { HouseholdMemberSchema } from "@/contracts/household";
@@ -35,18 +36,25 @@ export function parseId(fd: FormData): string | null {
 }
 
 export async function listTasks(): Promise<Result<Task[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("tasks").select("*");
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("tasks").select("*").eq("household_id", householdId);
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(TaskSchema).safeParse(data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: MSG.load };
 }
 
 export async function listMembers(): Promise<Member[]> {
-  const db = await createUserClient();
-  if (!db) return [];
-  const { data } = await db.from("household_members").select("user_id, display_name").order("display_name");
+  const sc = await scopedDb();
+  if (!sc) return [];
+  const { db, householdId } = sc;
+  const { data } = await db
+    .from("household_members")
+    .select("user_id, display_name")
+    .eq("household_id", householdId)
+    .eq("status", "active")
+    .order("display_name");
   const parsed = z.array(HouseholdMemberSchema.pick({ user_id: true, display_name: true })).safeParse(data ?? []);
   return parsed.success ? parsed.data : [];
 }

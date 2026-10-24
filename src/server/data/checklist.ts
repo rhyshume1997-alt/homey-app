@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { ChecklistItemSchema, type ChecklistItem, type DueChecklistItem } from "@/contracts/checklist";
 
@@ -20,9 +21,10 @@ export function parseId(fd: FormData): string | null {
 }
 
 export async function listChecklist(): Promise<Result<ChecklistItem[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("checklist_items").select(COLS).order("title");
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("checklist_items").select(COLS).eq("household_id", householdId).order("title");
   const parsed = z.array(ChecklistItemSchema).safeParse(data);
   return error || !parsed.success ? { ok: false, error: MSG.load } : { ok: true, data: parsed.data };
 }

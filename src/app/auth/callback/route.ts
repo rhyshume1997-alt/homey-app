@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSession } from "@/server/auth/session";
+import { getAuthOnly } from "@/server/auth/session";
 import { sanitizeNext } from "@/server/auth/next-param";
 import { createUserClient } from "@/server/db/supabase";
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     if (!code || request.nextUrl.searchParams.has("error")) throw new Error("denied");
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw new Error("denied");
-    const session = await getSession();
+    const session = await getAuthOnly(); // signed in; membership is not required (invitees have none yet)
     if (!session) throw new Error("denied");
   } catch {
     try {

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import type { SuppliesCardData } from "@/components/home/SuppliesCard";
 import { SHOPPING_LIMITS, SUPPLY_LIMITS, SUPPLY_STATUSES, type ShoppingItem, type Supply } from "@/components/shopping/types";
@@ -80,20 +81,22 @@ async function run(fn: (db: Db) => PromiseLike<{ error: { code?: string } | null
 }
 
 export async function listShopping(): Promise<Result<ShoppingItem[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("shopping_items")
-    .select("id,title,quantity,shop,done,done_at")
+    .select("id,title,quantity,shop,done,done_at").eq("household_id", householdId)
     .order("created_at", { ascending: true });
   const parsed = z.array(ShoppingRowSchema).safeParse(data);
   return error || !parsed.success ? { ok: false, error: MSG.load } : { ok: true, data: parsed.data };
 }
 
 export async function listSupplies(): Promise<Result<Supply[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("supplies").select("id,name,location,status,notes,last_checked_at");
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("supplies").select("id,name,location,status,notes,last_checked_at").eq("household_id", householdId);
   const parsed = z.array(SupplyRowSchema).safeParse(data);
   return error || !parsed.success ? { ok: false, error: MSG.load } : { ok: true, data: parsed.data };
 }

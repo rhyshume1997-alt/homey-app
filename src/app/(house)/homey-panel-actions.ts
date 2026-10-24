@@ -1,7 +1,7 @@
 "use server";
 
 import { requireSession } from "@/server/auth/session";
-import { getServerEnv } from "@/server/env";
+import { getServerEnv, isPrimaryHousehold } from "@/server/env";
 import { todayInLondon } from "@/server/data/dashboard";
 import { getNeedsDoing, getNeedsEntries } from "@/server/homey/needs-doing";
 import { importCheckItem } from "@/server/homey/import-check";
@@ -57,6 +57,7 @@ export async function loadHomeyPanelAction(): Promise<HomeyPanelData> {
  */
 export async function proposeFromItemAction(key: unknown): Promise<ProposeFromItemResult> {
   const s = await requireSession();
+  if (!isPrimaryHousehold(s.householdId)) return { ok: false, error: FAIL };
   if (typeof key !== "string" || !KEY_RE.test(key)) return { ok: false, error: "That item is no longer available." };
   const { entries } = await getNeedsEntries(s, todayInLondon());
   const entry = entries.find((e) => e.item.key === key);

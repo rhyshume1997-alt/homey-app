@@ -30,7 +30,7 @@ describe("BudgetView", () => {
     render(<BudgetView sheet={sheet} flags={flags} />);
     const panel = screen.getByRole("region", { name: "Does not reconcile" });
     expect(within(panel).getAllByTestId("flag")).toHaveLength(flags.length);
-    expect(panel.textContent).toContain("Food: Amount £250 but Rhys £160 + Rachel £120 = £280");
+    expect(panel.textContent).toContain("Food: Amount £250 but Member A £160 + Member B £120 = £280");
     expect(panel.textContent).toContain("Expected £280.00, actual £250.00, difference -£30.00");
   });
 
@@ -42,6 +42,12 @@ describe("BudgetView", () => {
     expect(screen.queryByTestId("formula")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Formulas" }));
     expect(screen.getByTestId("formula").textContent).toBe("=SUM(C2:D2)");
+  });
+
+  it("renders one column per sheet share header", () => {
+    const s3 = parseCosts([["Bills", "Amount", "A", "B", "C"], ["Rent", 3, 1, 1, 1]]);
+    render(<BudgetView sheet={s3} flags={[]} />);
+    expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Bill", "Amount", "A", "B", "C", "Changes?"]);
   });
 
   it("says so when no formulas exist", () => {
@@ -69,8 +75,8 @@ describe("BudgetView source line", () => {
     expect(screen.getByTestId("source").textContent).toBe("Live from Google Sheets");
   });
   it("shows the snapshot time, who refreshes it and a Connect Google link", () => {
-    render(<BudgetView sheet={sheet} flags={[]} source={{ live: false, at: "21 Oct 12:00", by: "Rhys" }} />);
-    expect(screen.getByTestId("source").textContent).toContain("Snapshot from 21 Oct 12:00 (refreshed when Rhys opens this page)");
+    render(<BudgetView sheet={sheet} flags={[]} source={{ live: false, at: "21 Oct 12:00", by: "Sam" }} />);
+    expect(screen.getByTestId("source").textContent).toContain("Snapshot from 21 Oct 12:00 (refreshed when Sam opens this page)");
     expect(screen.getByRole("link", { name: "Connect Google" }).getAttribute("href")).toBe("/settings/google");
   });
 });
@@ -88,11 +94,21 @@ describe("ContributionsCard", () => {
     render(<ContributionsCard data={data} />);
     expect(screen.getByText("£752.00 a month")).toBeTruthy();
     expect(screen.getByText("£750.00 a month")).toBeTruthy();
+    expect(screen.getByText("Member A")).toBeTruthy();
+    expect(screen.getByText("Member B")).toBeTruthy();
     expect(screen.getByTestId("unreconciled")).toBeTruthy();
   });
 
+  it("renders any number of people from the sheet labels", () => {
+    const sheet = parseCosts([["Bills", "Amount", "P", "Q", "R"], ["Joint Account Total", "", 1, 2]]);
+    render(<ContributionsCard data={contributionsFromCosts({ status: "ok", sheet, flags: [] })} />);
+    expect(screen.getByText("£1.00 a month")).toBeTruthy();
+    expect(screen.getByText("£2.00 a month")).toBeTruthy();
+    expect(screen.getByText("R").parentElement!.textContent).toContain("not in sheet");
+  });
+
   it("no marker when there are no flags", () => {
-    render(<ContributionsCard data={{ status: "ok", rhys: 1, rachel: 2, unreconciled: false }} />);
+    render(<ContributionsCard data={{ status: "ok", people: [{ label: "X", monthly: 1 }, { label: "Y", monthly: 2 }], unreconciled: false }} />);
     expect(screen.queryByTestId("unreconciled")).toBeNull();
   });
 });

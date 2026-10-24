@@ -144,12 +144,14 @@ describe("audit_log is append-only", () => {
 });
 
 describe("allowlist", () => {
-  it("rejects a new auth user whose email is not allowed", async () => {
+  it("lets a Google user who is not on the allowlist sign up, but gives them no household (open creation, D19)", async () => {
     await db.query("begin");
     try {
-      await expect(
-        db.query(`insert into auth.users (id, email, raw_app_meta_data) values (gen_random_uuid(), 'stranger@example.test', '{"provider":"google"}')`),
-      ).rejects.toThrow(/email not allowed/);
+      const r = await db.query(
+        `insert into auth.users (id, email, raw_app_meta_data) values (gen_random_uuid(), 'stranger@example.test', '{"provider":"google"}') returning id`,
+      );
+      const m = await db.query("select 1 from public.household_members where user_id = $1", [r.rows[0].id]);
+      expect(m.rows.length).toBe(0);
     } finally {
       await db.query("rollback");
     }

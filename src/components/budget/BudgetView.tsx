@@ -7,7 +7,6 @@ export const READ_ONLY_BANNER =
   "Read-only copy of your Google Sheet. Edit the sheet in Google Sheets; nothing here changes it or moves money.";
 
 const money = (n: number | null) => (n === null ? "blank" : formatGBP(n));
-const FLAG_KEY = { Amount: "amount", Rhys: "rhys", Rachel: "rachel" } as const;
 
 function Cell({ value, formula, flagged, showFormulas }: { value: number | null; formula?: string; flagged: boolean; showFormulas: boolean }) {
   return (
@@ -32,13 +31,18 @@ export function BudgetView({ sheet, flags, source }: { sheet: CostsSheet; flags:
   const flagged = (row: number, col: FlagColumn) => flags.some((f) => f.row === row && f.column === col);
   const anyFormula = [...sheet.bills, ...Object.values(sheet.summary).filter((x): x is SummaryLine => !!x)].some((l) => Object.keys(l.formulas).length > 0);
 
+  const cells = (l: SummaryLine) => [
+    <Cell key="amount" value={l.amount} formula={l.formulas.amount} flagged={flagged(l.row, "Amount")} showFormulas={showFormulas} />,
+    ...sheet.shareLabels.map((label, k) => (
+      <Cell key={k} value={l.shares[k] ?? null} formula={l.formulas.shares?.[k]} flagged={flagged(l.row, label)} showFormulas={showFormulas} />
+    )),
+  ];
+
   const line = (label: string, l: SummaryLine | null, key: string) =>
     l ? (
       <tr key={key} className="border-t border-border bg-surface-muted font-semibold" data-testid="summary-row">
         <th scope="row" className="px-2 py-2 text-left align-top">{label}</th>
-        {(["Amount", "Rhys", "Rachel"] as const).map((c) => (
-          <Cell key={c} value={l[FLAG_KEY[c]]} formula={l.formulas[FLAG_KEY[c]]} flagged={flagged(l.row, c)} showFormulas={showFormulas} />
-        ))}
+        {cells(l)}
         <td />
       </tr>
     ) : null;
@@ -80,8 +84,9 @@ export function BudgetView({ sheet, flags, source }: { sheet: CostsSheet; flags:
               <tr className="text-left text-muted">
                 <th scope="col" className="px-2 py-2">Bill</th>
                 <th scope="col" className="px-2 py-2 text-right">Amount</th>
-                <th scope="col" className="px-2 py-2 text-right">Rhys</th>
-                <th scope="col" className="px-2 py-2 text-right">Rachel</th>
+                {sheet.shareLabels.map((label, k) => (
+                  <th key={k} scope="col" className="px-2 py-2 text-right">{label}</th>
+                ))}
                 <th scope="col" className="px-2 py-2">Changes?</th>
               </tr>
             </thead>
@@ -89,9 +94,7 @@ export function BudgetView({ sheet, flags, source }: { sheet: CostsSheet; flags:
               {sheet.bills.map((b) => (
                 <tr key={b.row} className="border-t border-border" data-testid="bill-row">
                   <th scope="row" className="px-2 py-2 text-left align-top font-medium">{b.name}</th>
-                  {(["Amount", "Rhys", "Rachel"] as const).map((c) => (
-                    <Cell key={c} value={b[FLAG_KEY[c]]} formula={b.formulas[FLAG_KEY[c]]} flagged={flagged(b.row, c)} showFormulas={showFormulas} />
-                  ))}
+                  {cells(b)}
                   <td className="px-2 py-2 align-top text-muted">{b.note ?? ""}</td>
                 </tr>
               ))}

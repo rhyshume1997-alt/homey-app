@@ -8,7 +8,8 @@ import { existsSync } from "node:fs";
 const PORT = 3300;
 const localChromium = "/opt/pw-browsers/chromium";
 const launch = existsSync(localChromium) ? { launchOptions: { executablePath: localChromium } } : {};
-const env = { NEXT_DIST_DIR: ".next-mobile", PATH: process.env.PATH ?? "" };
+// Same household id as H in tests/mobile/fake-supabase.mjs, so the primary-household features behave as before.
+const env = { NEXT_DIST_DIR: ".next-mobile", PATH: process.env.PATH ?? "", PRIMARY_HOUSEHOLD_ID: "0000aaaa-0000-4000-8000-000000000001" };
 
 const iphone = devices["iPhone 13"];
 const android = devices["Pixel 7"];

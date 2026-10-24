@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { HomeyDigest, NeedBucket, NeedItem } from "@/components/homey/types";
 import type { HouseholdSession } from "@/server/auth/session";
+import { isPrimaryHousehold } from "@/server/env";
 import { createUserClient } from "@/server/db/supabase";
 import { callClaude, MAX_TOKENS, MODELS, type AiDeps, type ToolDef } from "./client";
 import { clean, DIGEST_PROMPT } from "./context";
@@ -206,6 +207,7 @@ export async function getOrCreateDigest(
   deps: DigestDeps = { ai: defaultDeps(session), store: supabaseDigestStore(session) },
 ): Promise<HomeyDigest | null> {
   try {
+    if (!isPrimaryHousehold(session.householdId)) return null;
     if (!DATE.test(today)) return null;
     const input = buildDigestInput(items, today);
     const liveKeys = new Set(items.map((i) => i.key));

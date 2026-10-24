@@ -11,8 +11,8 @@ let n = 0;
 const uid = () => `0000cccc-0000-4000-8000-${String(++n).padStart(12, "0")}`;
 
 const members = [
-  { household_id: H, user_id: RHYS, role: "owner", display_name: "Alex", created_at: iso(9000) },
-  { household_id: H, user_id: RACHEL, role: "owner", display_name: "Sam", created_at: iso(9000) },
+  { household_id: H, user_id: RHYS, role: "owner", display_name: "Alex", status: "active", households: { name: "Test household" }, created_at: iso(9000) },
+  { household_id: H, user_id: RACHEL, role: "owner", display_name: "Sam", status: "active", households: { name: "Test household" }, created_at: iso(9000) },
 ];
 const task = (title, o = {}) => ({
   id: uid(), household_id: H, title, notes: null, assignee_user_id: null, due_date: null,
@@ -150,7 +150,7 @@ const meal_ingredients = [
 const tables = {
   rooms, wishlist_items, checklist_items, emergency_items, wifi_networks: [], household_events, appliances, meter_readings,
   meals, meal_ingredients, kudos: [], ai_digests: [],
-  household_records, household_members: members, tasks, snags, audit_log, bin_collections, documents, shopping_items,
+  household_records, household_members: members, household_invites: [], tasks, snags, audit_log, bin_collections, documents, shopping_items,
   supplies, maintenance_items, maintenance_log, notifications, notification_reads: [], email_threads, ai_usage,
   ai_proposals, push_subscriptions: [], budget_snapshots: [],
 };

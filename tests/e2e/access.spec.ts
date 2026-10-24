@@ -85,3 +85,39 @@ test("POST /auth/signout without a session is not 2xx", async ({ request }) => {
   const res = await request.post("/auth/signout", { maxRedirects: 0 });
   expect(res.status()).toBeGreaterThanOrEqual(300);
 });
+
+test("GET /onboarding signed out redirects to login", async ({ request }) => {
+  const res = await request.get("/onboarding", { maxRedirects: 0 });
+  expect(res.status()).toBe(307);
+  expect(new URL(res.headers()["location"], "http://x").pathname).toBe("/login");
+});
+
+test("a well-formed invite link signed out stores a short-lived httpOnly cookie and redirects to login without the token", async ({ request }) => {
+  const token = "A".repeat(43);
+  const res = await request.get(`/invite/${token}`, { maxRedirects: 0 });
+  expect(res.status()).toBe(303);
+  const loc = res.headers()["location"];
+  expect(new URL(loc, "http://x").pathname).toBe("/login");
+  expect(loc).not.toContain(token);
+  const cookie = res.headers()["set-cookie"] ?? "";
+  expect(cookie).toContain("oh_invite=");
+  expect(cookie).toMatch(/HttpOnly/i);
+  expect(cookie).toMatch(/Max-Age=900/i);
+  expect(res.headers()["cache-control"]).toContain("no-store");
+});
+
+test("malformed invite links are not public and set no cookie", async ({ request }) => {
+  for (const p of ["/invite/short", `/invite/${"A".repeat(43)}/x`]) {
+    const res = await request.get(p, { maxRedirects: 0 });
+    expect(res.status()).toBe(307);
+    expect(new URL(res.headers()["location"] ?? "", "http://x").pathname).toBe("/login");
+    expect(res.headers()["set-cookie"] ?? "").not.toContain("oh_invite");
+  }
+});
+
+test("dot-segment invite paths fold to the public landing page and never reach the invite handler", async ({ request }) => {
+  // The server normalises /x/%2e%2e to "/", like every other path (pre-existing behaviour).
+  const res = await request.get("/invite/%2e%2e", { maxRedirects: 0 });
+  expect(res.headers()["set-cookie"] ?? "").not.toContain("oh_invite");
+  expect(await res.text()).toContain("A private household app");
+});

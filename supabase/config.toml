@@ -1,0 +1,57 @@
+# Local Supabase stack for the real-API test suite only (npm run test:supabase, CI job "supabase").
+# This file configures `supabase start` on a developer machine or CI runner. It never touches a
+# remote project. Production auth is Google sign-in only (D15); email/password is enabled HERE
+# solely so test users, created through the admin API, can obtain JWTs. Never copy this to a
+# hosted project.
+project_id = "our-home-test"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = false
+
+[inbucket]
+enabled = false
+
+[realtime]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[storage.image_transformation]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false

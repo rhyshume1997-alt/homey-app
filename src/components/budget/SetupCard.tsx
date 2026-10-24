@@ -7,7 +7,7 @@ export function SetupCard() {
       </p>
       <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm">
         <li>
-          Alex (once): in Vercel, set <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> (the same values as the
+          The household owner (once): in Vercel, set <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> (the same values as the
           Google provider in Supabase), <code>GOOGLE_TOKEN_ENCRYPTION_KEY</code> and <code>COSTS_SHEET_ID</code> (the ID in the sheet URL),
           then redeploy.
         </li>

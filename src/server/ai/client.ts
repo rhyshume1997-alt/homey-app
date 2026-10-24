@@ -12,7 +12,7 @@ export type ModelId = (typeof MODELS)[keyof typeof MODELS] | "claude-sonnet-5-5"
  * cap errs on the safe side: at the time of writing Haiku 5.5 lists at about $0.10 / $0.50
  * per MTok up to 100K-token prompts ($0.50 / $2.50 above) and Sonnet 5.5 at $2 / $10,
  * so these figures sit well above both, even with an unfavourable exchange rate.
- * TODO(Alex): confirm against https://www.anthropic.com/pricing and lower if wanted.
+ * TODO(household owner): confirm against https://www.anthropic.com/pricing and lower if wanted.
  */
 export const PRICES_PENCE_PER_MTOK: Record<ModelId, { input: number; output: number }> = {
   "claude-haiku-5-5": { input: 100, output: 500 },

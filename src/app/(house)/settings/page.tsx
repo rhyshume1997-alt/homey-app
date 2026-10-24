@@ -3,6 +3,16 @@ import { MembersList, ROLE_LABELS } from "@/components/more/MembersList";
 import { PushSettings } from "@/components/push/PushSettings";
 import { getAuthUser, requireSession } from "@/server/auth/session";
 import { loadMembers } from "@/server/data/members";
+import { listActiveMembers, listPendingInvites } from "@/server/data/households";
+import { MembersManager } from "@/components/household/MembersManager";
+import { HouseholdSwitcher } from "@/components/household/HouseholdSwitcher";
+import {
+  inviteMemberAction,
+  leaveHouseholdAction,
+  removeMemberAction,
+  revokeInviteAction,
+  switchHouseholdAction,
+} from "../household-actions";
 import { todayInLondon } from "@/server/data/dashboard";
 import { DateFormatSettings } from "@/components/settings/DateFormatSettings";
 import { saveDateFormatAction, saveSnagsShownAction } from "../settings-actions";
@@ -22,6 +32,10 @@ const linkCls =
 export default async function SettingsPage() {
   const session = await requireSession();
   const members = await loadMembers(session.householdId);
+  const isOwner = session.role === "owner";
+  const managed = await listActiveMembers(session.householdId);
+  const invites = isOwner ? await listPendingInvites(session.householdId) : [];
+  const expiry = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/London" });
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Settings</h1>
@@ -72,8 +86,27 @@ export default async function SettingsPage() {
         <h2 id="household-heading" className="text-lg font-semibold">
           Members
         </h2>
-        <MembersList members={members ?? []} error={members === null} />
+        {managed === null ? (
+          <MembersList members={members ?? []} error={members === null} />
+        ) : (
+          <MembersManager
+            members={managed}
+            invites={(invites ?? []).map((i) => ({ id: i.id, email: i.email, expiresLabel: expiry.format(new Date(i.expiresAt)) }))}
+            selfUserId={session.userId}
+            isOwner={isOwner}
+            actions={{ invite: inviteMemberAction, revoke: revokeInviteAction, remove: removeMemberAction, leave: leaveHouseholdAction }}
+          />
+        )}
       </section>
+
+      {session.memberships.length > 1 ? (
+        <section aria-labelledby="switch-heading" className="flex flex-col gap-2">
+          <h2 id="switch-heading" className="text-lg font-semibold">
+            Households
+          </h2>
+          <HouseholdSwitcher memberships={session.memberships} currentId={session.householdId} action={switchHouseholdAction} />
+        </section>
+      ) : null}
 
       <nav aria-label="Activity" className="flex flex-col gap-2">
         <Link href="/activity" className={linkCls}>

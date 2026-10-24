@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import {
   WISHLIST_STATUSES, WishlistInputSchema, parseShopUrl,
@@ -62,9 +63,10 @@ async function run(fn: (db: Db) => PromiseLike<{ error: { code?: string } | null
 }
 
 export async function listWishlist(): Promise<Result<WishlistItem[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("wishlist_items").select(COLUMNS).order("created_at", { ascending: true });
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("wishlist_items").select(COLUMNS).eq("household_id", householdId).order("created_at", { ascending: true });
   const parsed = z.array(RowSchema).safeParse(data);
   return error || !parsed.success ? { ok: false, error: MSG.load } : { ok: true, data: parsed.data };
 }
@@ -72,11 +74,12 @@ export async function listWishlist(): Promise<Result<WishlistItem[]>> {
 /** Items for one room, for the room detail page. Bought items last. */
 export async function listWishlistForRoom(roomId: string): Promise<Result<WishlistItem[]>> {
   if (!z.uuid().safeParse(roomId).success) return { ok: false, error: MSG.load };
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
   const { data, error } = await db
     .from("wishlist_items")
-    .select(COLUMNS)
+    .select(COLUMNS).eq("household_id", householdId)
     .eq("room_id", roomId)
     .order("created_at", { ascending: true });
   const parsed = z.array(RowSchema).safeParse(data);
@@ -86,9 +89,10 @@ export async function listWishlistForRoom(roomId: string): Promise<Result<Wishli
 }
 
 export async function listWishlistRooms(): Promise<Result<WishlistRoom[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("rooms").select("id,name").order("sort_order", { ascending: true });
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("rooms").select("id,name").eq("household_id", householdId).order("sort_order", { ascending: true });
   const parsed = z.array(RoomRowSchema).safeParse(data);
   return error || !parsed.success ? { ok: false, error: MSG.load } : { ok: true, data: parsed.data };
 }

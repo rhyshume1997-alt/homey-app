@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createUserClient } from "@/server/db/supabase";
+import { scopedDb } from "@/server/db/scoped";
 import type { HouseholdSession } from "@/server/auth/session";
 import { RoomNameInputSchema, RoomNotesInputSchema, RoomSchema, type Room } from "@/contracts/rooms";
 import { TaskSchema, type Task } from "@/contracts/tasks";
@@ -41,18 +42,20 @@ export function parseDirection(fd: FormData): "up" | "down" | null {
 type Db = NonNullable<Awaited<ReturnType<typeof createUserClient>>>;
 
 export async function listRooms(): Promise<Result<Room[]>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("rooms").select("*").order("sort_order").order("name");
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("rooms").select("*").eq("household_id", householdId).order("sort_order").order("name");
   if (error || !data) return { ok: false, error: MSG.load };
   const parsed = z.array(RoomSchema).safeParse(data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: MSG.load };
 }
 
 export async function getRoom(id: string): Promise<Result<Room | null>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  const { data, error } = await db.from("rooms").select("*").eq("id", id).maybeSingle();
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  const { data, error } = await db.from("rooms").select("*").eq("household_id", householdId).eq("id", id).maybeSingle();
   if (error) return { ok: false, error: MSG.load };
   if (!data) return { ok: true, data: null };
   const parsed = RoomSchema.safeParse(data);
@@ -61,10 +64,11 @@ export async function getRoom(id: string): Promise<Result<Room | null>> {
 
 /** Open tasks and unfixed snags that have a room. `roomId` limits them to one room. */
 export async function listRoomItems(roomId?: string): Promise<Result<{ tasks: Task[]; snags: Snag[] }>> {
-  const db = await createUserClient();
-  if (!db) return { ok: false, error: MSG.load };
-  let tq = db.from("tasks").select("*").eq("status", "open");
-  let sq = db.from("snags").select("*").neq("status", "fixed");
+  const sc = await scopedDb();
+  if (!sc) return { ok: false, error: MSG.load };
+  const { db, householdId } = sc;
+  let tq = db.from("tasks").select("*").eq("household_id", householdId).eq("status", "open");
+  let sq = db.from("snags").select("*").eq("household_id", householdId).neq("status", "fixed");
   tq = roomId ? tq.eq("room_id", roomId) : tq.not("room_id", "is", null);
   sq = roomId ? sq.eq("room_id", roomId) : sq.not("room_id", "is", null);
   const [t, s] = await Promise.all([tq, sq]);

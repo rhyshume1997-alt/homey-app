@@ -75,7 +75,7 @@ describe("google token functions", () => {
       "select * from public.get_my_google_token()",
       "select * from public.google_connection_status()",
       "select public.delete_my_google_token()",
-      "select public.store_my_google_token('v1:x','s')",
+      "select public.store_my_google_token('a3a30000-0000-4000-8000-00000000000a','v1:x','s')",
     ]) {
       expect((await tryQuery(db, { role: "anon" }, sql)).error?.message, sql).toMatch(/permission denied/);
     }
@@ -86,8 +86,8 @@ describe("google token functions", () => {
     await db.query("begin");
     try {
       await asUser(UA1);
-      await db.query("select public.store_my_google_token('v1:one:two:three', $1)", [SC]);
-      await db.query("select public.store_my_google_token('v1:four:five:six', $1)", [SC]);
+      await db.query("select public.store_my_google_token('a3a30000-0000-4000-8000-00000000000a','v1:one:two:three', $1)", [SC]);
+      await db.query("select public.store_my_google_token('a3a30000-0000-4000-8000-00000000000a','v1:four:five:six', $1)", [SC]);
       expect((await db.query("select ciphertext from public.get_my_google_token()")).rows).toEqual([{ ciphertext: "v1:four:five:six" }]);
       await db.query("reset role");
       expect((await db.query("select user_id, household_id from private.google_tokens")).rows).toEqual([{ user_id: UA1, household_id: HA }]);
@@ -100,10 +100,10 @@ describe("google token functions", () => {
   });
 
   it("store rejects non-members, bad format and oversize values", async () => {
-    const nm = await tryQuery(db, authed("a3a30000-0000-4000-8000-0000000000ff"), "select public.store_my_google_token('v1:a:b:c','s')");
+    const nm = await tryQuery(db, authed("a3a30000-0000-4000-8000-0000000000ff"), "select public.store_my_google_token('a3a30000-0000-4000-8000-00000000000a','v1:a:b:c','s')");
     expect(nm.error?.message).toMatch(/not a member/);
-    expect((await tryQuery(db, authed(UA1), "select public.store_my_google_token('plain-token','s')")).error?.message).toMatch(/invalid token/);
-    expect((await tryQuery(db, authed(UA1), "select public.store_my_google_token($1,'s')", ["v1:" + "x".repeat(4000)])).error?.message).toMatch(/invalid token/);
+    expect((await tryQuery(db, authed(UA1), "select public.store_my_google_token('a3a30000-0000-4000-8000-00000000000a','plain-token','s')")).error?.message).toMatch(/invalid token/);
+    expect((await tryQuery(db, authed(UA1), "select public.store_my_google_token('a3a30000-0000-4000-8000-00000000000a',$1,'s')", ["v1:" + "x".repeat(4000)])).error?.message).toMatch(/invalid token/);
   });
 
   it("delete removes only the caller's row", async () => {

@@ -10,7 +10,7 @@ const NOTICES: Record<string, { text: string; error: boolean }> = {
   failed: { text: "Could not connect Google. Please try again.", error: true },
   scopes: { text: "Google did not grant access to the sheet or to Gmail. Tick both boxes on the Google screen and try again.", error: true },
   no_refresh_token: { text: "Google did not give a lasting connection. Please try again.", error: true },
-  unconfigured: { text: "Google connection is not set up on the server yet (Alex needs to add the settings).", error: true },
+  unconfigured: { text: "Google connection is not set up on the server yet (the household owner needs to add the settings).", error: true },
 };
 
 export function noticeFor(params: { connected?: string; disconnected?: string; error?: string }) {
@@ -72,7 +72,7 @@ export function GoogleStatus({
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Read-only. Our Home can read the costs sheet and look at Gmail thread headers. It cannot edit the sheet, send, delete or label email, or move money.</li>
           <li>From Gmail it keeps only the subject, the company domain, dates and who wrote last. Message text and email addresses are never stored.</li>
-          <li>Your connection is stored encrypted and only your own sign-in can use it. Sam cannot see your Gmail data beyond those awaiting-reply entries.</li>
+          <li>Your connection is stored encrypted and only your own sign-in can use it. Other members of your household cannot see your Gmail data beyond those awaiting-reply entries.</li>
           <li>Disconnect any time: the stored connection is deleted and access is revoked at Google.</li>
         </ul>
       </section>

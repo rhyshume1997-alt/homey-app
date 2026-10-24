@@ -43,9 +43,18 @@ const PUBLIC_PREFIXES: readonly string[] = ["/_next/static/"];
 /** Anything that could smuggle traversal, encoding or odd separators. */
 const SUSPICIOUS = /%|\\|\/\/|(^|\/)\.\.?(\/|$)|[\u0000-\u001f\u007f]/;
 
+/**
+ * Invite links, exactly /invite/<43 base64url chars>. The route handler only moves the token into
+ * a short-lived httpOnly cookie and redirects (to /onboarding when signed in, /login when not), so
+ * it needs no session and reveals nothing. Joining still needs a signed-in user: /onboarding is
+ * not public. Anything else under /invite/ (extra segments, wrong length, encoding) is denied.
+ */
+const INVITE_LINK = /^\/invite\/[A-Za-z0-9_-]{43}$/;
+
 function isPublicPath(pathname: string): boolean {
   if (!pathname.startsWith("/") || SUSPICIOUS.test(pathname)) return false;
   if (PUBLIC_EXACT.has(pathname)) return true;
+  if (INVITE_LINK.test(pathname)) return true;
   return PUBLIC_PREFIXES.some(
     (p) => pathname.startsWith(p) && pathname.length > p.length,
   );
@@ -53,6 +62,8 @@ function isPublicPath(pathname: string): boolean {
 
 /**
  * Deny-by-default access decision. Pure: no I/O.
+ * It only answers "is someone signed in". Household membership is checked by requireSession() in
+ * pages and actions; /onboarding and /invite deliberately do not require it (a new person has none).
  * `pathname` is the raw (still percent-encoded) URL pathname, no query string.
  */
 export function decideAccess(

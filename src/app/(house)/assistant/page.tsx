@@ -1,5 +1,5 @@
 import { requireSession } from "@/server/auth/session";
-import { getServerEnv } from "@/server/env";
+import { getServerEnv, isPrimaryHousehold } from "@/server/env";
 import { getMonthSpendPence } from "@/server/ai/usage";
 import { listPendingProposals } from "@/server/ai/proposals";
 import { AssistantChat } from "@/components/assistant/AssistantChat";
@@ -18,7 +18,7 @@ export default async function AssistantPage() {
       <h1 className="text-2xl font-semibold">Homey chat</h1>
       <p className="text-sm text-muted">Proposals need your confirmation</p>
       <SpendMeter spentPence={spent} capGbp={env.AI_MONTHLY_CAP_GBP} />
-      {env.ANTHROPIC_API_KEY ? <AssistantChat send={sendMessageAction} /> : <AssistantOff />}
+      {env.ANTHROPIC_API_KEY && isPrimaryHousehold(s.householdId) ? <AssistantChat send={sendMessageAction} /> : <AssistantOff />}
       <ProposalList proposals={proposals} confirm={confirmProposalAction} reject={rejectProposalAction} />
     </div>
   );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/server/auth/session";
+import { getAuthOnly } from "@/server/auth/session";
 import { sanitizeNext } from "@/server/auth/next-param";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ const MESSAGES: Record<string, string> = {
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
-  if (await getSession()) redirect("/");
+  if (await getAuthOnly()) redirect("/");
 
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : null);
