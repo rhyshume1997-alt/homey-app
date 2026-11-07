@@ -1,5 +1,4 @@
 import "server-only";
-import { createUserClient } from "@/server/db/supabase";
 import { scopedDb } from "@/server/db/scoped";
 import { parseRecords, MSG, type Result } from "@/server/data/records";
 import { groupEnergy, type EnergyData } from "@/components/energy/group";

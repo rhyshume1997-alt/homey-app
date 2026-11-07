@@ -1,5 +1,4 @@
 import "server-only";
-import { createUserClient } from "@/server/db/supabase";
 import { scopedDb } from "@/server/db/scoped";
 import { addDays, groupBins, londonToday, type BinDay } from "@/components/bins/group";
 
