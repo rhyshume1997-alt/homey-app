@@ -1,6 +1,5 @@
 import "server-only";
 import { AuditEntrySchema } from "@/contracts/household";
-import { createUserClient } from "@/server/db/supabase";
 import { scopedDb } from "@/server/db/scoped";
 import { parseBefore } from "@/components/activity/format";
 import type { ActivityRow } from "@/components/activity/format";
