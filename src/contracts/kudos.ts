@@ -12,7 +12,6 @@ export const KudosMessageSchema = z
       .string()
       .min(1)
       .max(KUDOS_MAX)
-      // eslint-disable-next-line no-control-regex
       .refine((s) => !/[\u0000-\u001f\u007f]/.test(s), "No control characters"),
   );
 

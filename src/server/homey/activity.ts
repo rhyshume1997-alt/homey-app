@@ -15,7 +15,6 @@ const isThankAction = (a: string): a is ThankAction => (ACTIONS as readonly stri
 export type Thankable = { auditId: number; name: string; thing: string; action: ThankAction; text: string; createdAt: string };
 
 function clean(s: string | null): string {
-  // eslint-disable-next-line no-control-regex
   return (s ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
